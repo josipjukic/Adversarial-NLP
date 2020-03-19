@@ -1,5 +1,7 @@
 # Literature
 
+List has been extracted from [TAADpapers](https://github.com/thunlp/TAADpapers). Papers are filtered and structered according to the area of research.
+
 ### Contents
 
 * [1. Survey Papers](#1-survey-papers)
