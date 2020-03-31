@@ -287,16 +287,6 @@ class DataManager(ABC, Dataset):
             A dictionary holding the data point's features (x_data) and label (y_target).
         """
         pass
-        # row = self._target_df.iloc[index]
-
-        # review_vector = \
-        #     self._vectorizer.vectorize(row.review)
-
-        # rating_index = \
-        #     self._vectorizer.rating_vocab.lookup_token(row.rating)
-
-        # return {'x_data': review_vector,
-        #         'y_target': rating_index}
 
     def get_num_batches(self, batch_size):
         """
@@ -311,6 +301,31 @@ class DataManager(ABC, Dataset):
             Number of batches in the dataset.
         """
         return len(self) // batch_size  
+
+
+class YelpDataset(DataManager):
+
+    def __getitem__(self, index):
+        """
+        The primary entry point method for PyTorch datasets.
+        
+        Arguments
+        ---------
+        index : int
+            The index to the data point. 
+        Returns:
+            A dictionary holding the data point's features (x_data) and label (y_target).
+        """
+        row = self._target_df.iloc[index]
+
+        review_vector = \
+            self._vectorizer.vectorize(row.review)
+
+        rating_index = \
+            self._vectorizer.rating_vocab.lookup_token(row.rating)
+
+        return {'x_data': review_vector,
+                'y_target': rating_index}
 
 
 def generate_batches(dataset, batch_size, shuffle=True,
