@@ -9,8 +9,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class RNN(nn.Module):
 
-    def __init__(self, embedding_size, num_embeddings,
-                 input_dim, hidden_dim, output_dim=1, num_layers=2,
+    def __init__(self, embedding_dim, num_embeddings,
+                 hidden_dim, output_dim=1, num_layers=2,
                  pretrained_embeddings=None, padding_idx=0,
                  bidirectional=False, nonlinearity='tanh', dropout=0.):
         super(RNN, self).__init__()
@@ -30,14 +30,16 @@ class RNN(nn.Module):
                                     padding_idx=padding_idx,
                                     _weight=emb)
 
-        self.lstm = nn.RNN(self.input_dim, self.hidden_dim, self.num_layers,
+        self.lstm = nn.RNN(self.embedding_size, self.hidden_dim, self.num_layers,
                            bidirectional=bidirectional, dropout=dropout,
                            nonlinearity=nonlinearity)
 
-        self.linear = nn.Linear(self.hidden_dim, self.output_dim)
+        hidden2out_dim = self.hidden_dim * 2 if self.bidirectional else self.hidden_dim
+        self.linear = nn.Linear(hidden2out_dim, self.output_dim)
 
     def forward(self, x_in, apply_softmax=False):
-        rnn_out, self.hidden = self.rnn(x_in)
+        x_embedded = self.emb(x_in).permute(0, 2, 1)
+        rnn_out, self.hidden = self.rnn(x_embedded)
         y_pred = self.linear(rnn_out)
 
         if apply_softmax:
@@ -48,9 +50,9 @@ class RNN(nn.Module):
 
 class LSTM(nn.Module):
 
-    def __init__(self, embedding_size, num_embeddings,
+    def __init__(self, embedding_dim, num_embeddings,
                  pretrained_embeddings=None, padding_idx=0,
-                 input_dim, hidden_dim, output_dim=1, num_layers=2,
+                 hidden_dim, output_dim=1, num_layers=2,
                  bidirectional=False, dropout=0.):
         super(LSTM, self).__init__()
         self.input_dim = input_dim
@@ -69,13 +71,15 @@ class LSTM(nn.Module):
                                     padding_idx=padding_idx,
                                     _weight=emb)
 
-        self.lstm = nn.LSTM(self.input_dim, self.hidden_dim, self.num_layers,
+        self.lstm = nn.LSTM(self.embedding_dim, self.hidden_dim, self.num_layers,
                             bidirectional=bidirectional, dropout=dropout)
 
-        self.linear = nn.Linear(self.hidden_dim, self.output_dim)
+        hidden2out_dim = self.hidden_dim * 2 if self.bidirectional else self.hidden_dim
+        self.linear = nn.Linear(hidden2out_dim, self.output_dim)
 
     def forward(self, x_in, apply_softmax=False):
-        lstm_out, self.hidden = self.lstm(x_in)
+        x_embedded = self.emb(x_in).permute(0, 2, 1)
+        lstm_out, self.hidden = self.lstm(x_embedded)
         y_pred = self.linear(lstm_out)
 
         if apply_softmax:

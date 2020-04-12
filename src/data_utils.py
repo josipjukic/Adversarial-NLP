@@ -13,13 +13,17 @@ from torch.utils.data import (Dataset, DataLoader)
 
 class Vocabulary(object):
     """ Class to process text and extract vocabulary for mapping. """
-
-    def __init__(self, token_to_idx=None):
+    
+    def __init__(self, token_to_idx=None, add_unk=True, unk_token="<UNK>"):
         """
         Arguments
         ---------
         token_to_idx : dict
             A pre-existing map of tokens to indices.
+        add_unk : bool
+            A flag that indicates whether to add the UNK token.
+        unk_token : str
+            The UNK token to add into the Vocabulary.
         """
         if token_to_idx is None:
             token_to_idx = {}
@@ -27,6 +31,13 @@ class Vocabulary(object):
 
         self._idx_to_token = {idx: token 
                               for token, idx in self._token_to_idx.items()}
+        
+        self._add_unk = add_unk
+        self._unk_token = unk_token
+        
+        self.unk_index = -1
+        if add_unk:
+            self.unk_index = self.add_token(unk_token) 
         
     def add_token(self, token):
         """
@@ -67,7 +78,22 @@ class Vocabulary(object):
         return [self.add_token(token) for token in tokens]
 
     def lookup_token(self, token):
-        return self._token_to_idx[token]
+        """
+        Retrieve the index associated with the token 
+        or the UNK index if token isn't present.
+        
+        Args:
+            token (str): the token to look up 
+        Returns:
+            index (int): the index corresponding to the token
+        Notes:
+            `unk_index` needs to be >=0 (having been added into the Vocabulary) 
+              for the UNK functionality 
+        """
+        if self.unk_index >= 0:
+            return self._token_to_idx.get(token, self.unk_index)
+        else:
+            return self._token_to_idx[token]
 
     def lookup_index(self, index):
         """
@@ -104,7 +130,7 @@ class SequenceVocabulary(Vocabulary):
                  mask_token="<MASK>", begin_seq_token="<BEGIN>",
                  end_seq_token="<END>"):
 
-        super(SequenceVocabulary, self).__init__(token_to_idx)
+        super(SequenceVocabulary, self).__init__(token_to_idx, add_unk=False)
 
         self._mask_token = mask_token
         self._unk_token = unk_token
@@ -116,26 +142,9 @@ class SequenceVocabulary(Vocabulary):
         self.begin_seq_index = self.add_token(self._begin_seq_token)
         self.end_seq_index = self.add_token(self._end_seq_token)
 
-    def lookup_token(self, token):
-        """Retrieve the index associated with the token 
-          or the UNK index if token isn't present.
-        
-        Args:
-            token (str): the token to look up 
-        Returns:
-            index (int): the index corresponding to the token
-        Notes:
-            `unk_index` needs to be >=0 (having been added into the Vocabulary) 
-              for the UNK functionality 
-        """
-        if self.unk_index >= 0:
-            return self._token_to_idx.get(token, self.unk_index)
-        else:
-            return self._token_to_idx[token]
-
 
 class DataManager(ABC, Dataset):
-    def __init__(self, df, vectorizer):
+    def __init__(self, df, vectorizer, target_name):
         """
         Arguments
         ---------
@@ -162,6 +171,15 @@ class DataManager(ABC, Dataset):
 
         self.set_split('train')
 
+        # Class weights
+        class_counts = df[target_name].value_counts().to_dict()
+        def sort_key(item):
+            return self._vectorizer.label_vocab.lookup_token(item[0])
+        sorted_counts = sorted(class_counts.items(), key=sort_key)
+        frequencies = [count for _, count in sorted_counts]
+        self.class_weights = 1.0 / torch.tensor(frequencies, dtype=torch.float32)
+
+
     @classmethod
     def load_dataset_and_make_vectorizer(cls, df_csv, init_vectorizer):
         """
@@ -181,7 +199,7 @@ class DataManager(ABC, Dataset):
         """
         df = pd.read_csv(df_csv)
         train_df = df[df.split=='train']
-        return cls(df, init_vectorizer(train_df))
+        return cls(df, init_vectorizer(df=train_df), cls.target_name)
     
     @classmethod
     def load_dataset_and_load_vectorizer(cls, df_csv, vectorizer_filepath):
@@ -202,7 +220,7 @@ class DataManager(ABC, Dataset):
         """
         df = pd.read_csv(df_csv)
         vectorizer = pickle_load(vectorizer_filepath)
-        return cls(df, vectorizer)
+        return cls(df, vectorizer, cls.target_name)
 
     def save_vectorizer(self, vectorizer_filepath):
         """
@@ -259,6 +277,33 @@ class DataManager(ABC, Dataset):
             Number of batches in the dataset.
         """
         return len(self) // batch_size
+
+
+class ImdbDataset(DataManager):
+
+    target_name = 'sentiment'
+
+    def __getitem__(self, index):
+        """
+        The primary entry point method for PyTorch datasets.
+        
+        Arguments
+        ---------
+        index : int
+            The index to the data point. 
+        Returns:
+            A dictionary holding the data point's features (x_data) and label (y_target).
+        """
+        row = self._target_df.iloc[index]
+
+        review_vector = \
+            self._vectorizer.vectorize(row.review)
+
+        rating_index = \
+            self._vectorizer.rating_vocab.lookup_token(row.sentiment)
+
+        return {'x_data': review_vector,
+                'y_target': sentiment_index}
 
 
 class YelpDataset(DataManager):

@@ -1,7 +1,11 @@
 import string
 from collections import Counter
+import numpy as np
 
-from data_utils import Vocabulary   
+from data_utils import (Vocabulary, SequenceVocabulary) 
+
+
+# TODO make abstract class Vectorizer
 
 
 class EmbeddingVectorizer():
@@ -23,9 +27,9 @@ class EmbeddingVectorizer():
             vectorized text (numpy.array)
         """
         indices = [self.data_vocab.begin_seq_index]
-        indices.extend(self.title_vocab.lookup_token(token) 
-                       for token in title.split(" "))
-        indices.append(self.title_vocab.end_seq_index)
+        indices.extend(self.data_vocab.lookup_token(token) 
+                       for token in text.split(" "))
+        indices.append(self.data_vocab.end_seq_index)
 
         if vector_length < 0:
             vector_length = len(indices)
@@ -64,32 +68,34 @@ class OneHotVectorizer():
 
         return one_hot
 
-    @classmethod
-    def from_dataframe(cls, corpus, labels, cutoff=25):
-        """Instantiate the vectorizer from the dataset dataframe
-        
-        Args:
-            df (pandas.DataFrame): the dataset
-            cutoff (int): the parameter for frequency-based filtering
-        Returns:
-            an instance of the OneHotVectorizer
-        """
-        data_vocab = Vocabulary(add_unk=True)
-        label_vocab = Vocabulary(add_unk=False)
-        
-        # Add ratings
-        for label in sorted(set(labels)):
-            label_vocab.add_token(label)
 
-        # Add top words if count > provided count
-        word_counts = Counter()
-        for text in corpus:
-            for word in text.split(' '):
-                if word not in string.punctuation:
-                    word_counts[word] += 1
-               
-        for word, count in word_counts.items():
-            if count > cutoff:
-                review_vocab.add_token(word)
+def vectorizer_from_dataframe(cls, df, data_name, target_name, cutoff=10):
+    """Instantiate the vectorizer from the dataset dataframe
+    
+    Args:
+        df (pandas.DataFrame): the dataset
+        cutoff (int): the parameter for frequency-based filtering
+    Returns:
+        an instance of the OneHotVectorizer
+    """
+    corpus = df[data_name]
+    labels = df[target_name]
+    data_vocab = SequenceVocabulary()
+    label_vocab = Vocabulary(add_unk=False)
+    
+    # Add ratings
+    for label in sorted(set(labels)):
+        label_vocab.add_token(label)
 
-        return cls(review_vocab, rating_vocab)
+    # Add top words if count > provided count
+    word_counts = Counter()
+    for text in corpus:
+        for word in text.split(' '):
+            if word not in string.punctuation:
+                word_counts[word] += 1
+            
+    for word, count in word_counts.items():
+        if count >= cutoff:
+            data_vocab.add_token(word)
+
+    return cls(data_vocab, label_vocab)

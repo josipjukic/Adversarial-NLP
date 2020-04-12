@@ -5,7 +5,6 @@ from nltk.tokenize import word_tokenize, sent_tokenize
 from bs4 import BeautifulSoup
 
 
-
 def strip_html(text):
     soup = BeautifulSoup(text, "html.parser")
     return soup.get_text()
@@ -55,3 +54,15 @@ def remove_stopwords(text, is_lower_case=True):
             token for token in tokens if token.lower() not in stop_words]
     filtered_text = ' '.join(filtered_tokens)
     return filtered_text
+
+
+def imdb_preprocess(text, size=200):
+    text = text.lower()
+    text = denoise_text(text)
+    text = remove_special_characters(text)
+    text = remove_stopwords(text)
+    tokens = text.split(' ')
+    end = min(len(tokens), size)
+    text = ' '.join(tokens[0:end])
+    return text
+

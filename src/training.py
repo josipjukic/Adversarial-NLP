@@ -1,8 +1,4 @@
 import torch
-from argparse import Namespace
-from data_utils import *
-from vectorization import OneHotVectorizer
-
 
 
 def make_train_state(args):
@@ -64,48 +60,6 @@ def update_train_state(args, model, train_state):
 
 
 def compute_accuracy(y_pred, y_target):
-    y_target = y_target.cpu()
-    y_pred_indices = (torch.sigmoid(y_pred) > 0.5).cpu().long()
+    _, y_pred_indices = y_pred.max(dim=1)
     n_correct = torch.eq(y_pred_indices, y_target).sum().item()
     return n_correct / len(y_pred_indices) * 100
-
-
-args = Namespace(
-    # Data and Path information
-    frequency_cutoff=25,
-    model_state_file='model.pth',
-    data_csv='/home/josip/mt/Adversarial-NLP/datasets/yelp_lite.csv',
-    save_dir='./save',
-    vectorizer_file='vectorizer.json',
-    # No Model hyper parameters
-    # Training hyper parameters
-    batch_size=128,
-    early_stopping_criteria=5,
-    learning_rate=0.001,
-    num_epochs=100,
-    seed=42,
-    # Runtime options
-    catch_keyboard_interrupt=True,
-    cuda=False,
-    expand_filepaths_to_save_dir=True,
-    reload_from_files=False,
-)
-
-
-args.device = torch.device('cuda' if args.cuda else 'cpu')
-
-# Set seed for reproducibility
-set_seed_everywhere(args.seed, args.cuda)
-
-# handle dirs
-handle_dirs(args.save_dir)
-
-def make_vectorizer(train_df):
-    return OneHotVectorizer.from_dataframe(train_df['review'], train_df['rating'])
-
-
-# dataset = YelpDataset.load_dataset_and_make_vectorizer(args.data_csv, make_vectorizer)
-# dataset.save_vectorizer(args.vectorizer_file)    
-# vectorizer = dataset.get_vectorizer()
-
-# classifier = LSTM(num_features=len(vectorizer.data_vocab))

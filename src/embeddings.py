@@ -1,7 +1,9 @@
 import numpy as np
+import torch
 
 
-GLOVE_6B_50D_PATH = 'embeddings/glove.6B/glove.6B.100d.txt'
+GLOVE_6B_50D_PATH = 'embeddings/glove.6B/glove.6B.50d.txt'
+GLOVE_6B_100D_PATH = 'embeddings/glove.6B/glove.6B.100d.txt'
 
 
 def load_glove_embeddings(path):
@@ -12,15 +14,15 @@ def load_glove_embeddings(path):
             values = line.split()
             word = values[0]
             word_to_index[word] = index
-            vector = np.array(line[1:]).astype(np.float)
+            vector = np.array(values[1:]).astype(np.float)
             embeddings.append(vector)
-    return word_to_index, embeddings
+    return word_to_index, np.array(embeddings)
 
 
 def make_embedding_matrix(path, words):
     word_to_index, embeddings = load_glove_embeddings(path) 
     embedding_size = embeddings.shape[1]
-    final_emb = np.zeros(len(words), embedding_size)
+    final_emb = np.zeros((len(words), embedding_size))
 
     for i, word in enumerate(words):
         if word in word_to_index:
