@@ -14,16 +14,12 @@ from torch.utils.data import (Dataset, DataLoader)
 class Vocabulary(object):
     """ Class to process text and extract vocabulary for mapping. """
 
-    def __init__(self, token_to_idx=None, add_unk=True, unk_token="<UNK>"):
+    def __init__(self, token_to_idx=None):
         """
         Arguments
         ---------
         token_to_idx : dict
             A pre-existing map of tokens to indices.
-        add_unk : bool
-            A flag that indicates whether to add the UNK token.
-        unk_token : str
-            The UNK token to add into the Vocabulary.
         """
         if token_to_idx is None:
             token_to_idx = {}
@@ -32,25 +28,6 @@ class Vocabulary(object):
         self._idx_to_token = {idx: token 
                               for token, idx in self._token_to_idx.items()}
         
-        self._add_unk = add_unk
-        self._unk_token = unk_token
-        
-        self.unk_index = -1
-        if add_unk:
-            self.unk_index = self.add_token(unk_token) 
-        
-        
-    def to_serializable(self):
-        """ Returns a dictionary that can be serialized. """
-        return {'token_to_idx': self._token_to_idx, 
-                'add_unk': self._add_unk, 
-                'unk_token': self._unk_token}
-
-    @classmethod
-    def from_serializable(cls, contents):
-        """ Instantiates the Vocabulary from a serialized dictionary. """
-        return cls(**contents)
-
     def add_token(self, token):
         """
         Update mapping dicts based on the token.
@@ -90,29 +67,7 @@ class Vocabulary(object):
         return [self.add_token(token) for token in tokens]
 
     def lookup_token(self, token):
-        """
-        Retrieve the index associated with the token 
-        or the UNK index if token isn't present.
-        
-        Arguments
-        ---------
-        token : str
-            The token to look up.
-
-        Returns
-        -------
-        index : int
-            The index corresponding to the token.
-
-        Notes
-        -----
-        `unk_index` needs to be >=0 (having been added into the Vocabulary) 
-        for the UNK functionality.
-        """
-        if self.unk_index >= 0:
-            return self._token_to_idx.get(token, self.unk_index)
-        else:
-            return self._token_to_idx[token]
+        return self._token_to_idx[token]
 
     def lookup_index(self, index):
         """
@@ -144,36 +99,39 @@ class Vocabulary(object):
         return len(self._token_to_idx)
 
 
-def pickle_load(filepath):
-    """
-    A static method for loading an object from pickle file.
-    
-    Arguments
-    ---------
-    filepath : str
-        The location of the serialized object.
-    
-    Returns
-    -------
-        An instance of a the serialized object.
-    """
-    with open(filepath, 'rb') as f:
-        return pickle.load(f)
+class SequenceVocabulary(Vocabulary):
+    def __init__(self, token_to_idx=None, unk_token="<UNK>",
+                 mask_token="<MASK>", begin_seq_token="<BEGIN>",
+                 end_seq_token="<END>"):
 
+        super(SequenceVocabulary, self).__init__(token_to_idx)
 
-def pickle_dump(obj, filepath):
-    """
-    A static method for saving an object in pickle format.
-    
-    Arguments
-    ---------
-    obj
-        Object to be serialized.
-    filepath : str
-        The location of the serialized object.
-    """
-    with open(filepath, 'wb') as f:
-        pickle.dump(obj, f)
+        self._mask_token = mask_token
+        self._unk_token = unk_token
+        self._begin_seq_token = begin_seq_token
+        self._end_seq_token = end_seq_token
+
+        self.mask_index = self.add_token(self._mask_token)
+        self.unk_index = self.add_token(self._unk_token)
+        self.begin_seq_index = self.add_token(self._begin_seq_token)
+        self.end_seq_index = self.add_token(self._end_seq_token)
+
+    def lookup_token(self, token):
+        """Retrieve the index associated with the token 
+          or the UNK index if token isn't present.
+        
+        Args:
+            token (str): the token to look up 
+        Returns:
+            index (int): the index corresponding to the token
+        Notes:
+            `unk_index` needs to be >=0 (having been added into the Vocabulary) 
+              for the UNK functionality 
+        """
+        if self.unk_index >= 0:
+            return self._token_to_idx.get(token, self.unk_index)
+        else:
+            return self._token_to_idx[token]
 
 
 class DataManager(ABC, Dataset):
@@ -300,7 +258,7 @@ class DataManager(ABC, Dataset):
         -------
             Number of batches in the dataset.
         """
-        return len(self) // batch_size  
+        return len(self) // batch_size
 
 
 class YelpDataset(DataManager):
@@ -354,3 +312,35 @@ def set_seed_everywhere(seed, cuda):
 def handle_dirs(dirpath):
     if not os.path.exists(dirpath):
         os.makedirs(dirpath)
+
+
+def pickle_load(filepath):
+    """
+    A static method for loading an object from pickle file.
+    
+    Arguments
+    ---------
+    filepath : str
+        The location of the serialized object.
+    
+    Returns
+    -------
+        An instance of a the serialized object.
+    """
+    with open(filepath, 'rb') as f:
+        return pickle.load(f)
+
+
+def pickle_dump(obj, filepath):
+    """
+    A static method for saving an object in pickle format.
+    
+    Arguments
+    ---------
+    obj
+        Object to be serialized.
+    filepath : str
+        The location of the serialized object.
+    """
+    with open(filepath, 'wb') as f:
+        pickle.dump(obj, f)
