@@ -3,17 +3,104 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class BiLSTM(nn.Module):
+    def __init__(self, embedding_dim, hidden_dim, output_dim,
+                 num_layers, pretrained_embeddings,
+                 dropout_p=0., padding_idx=0):
+        
+        super().__init__()
+        
+        self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
+                                                padding_idx=padding_idx)
+        
+        self.rnn = nn.LSTM(embedding_dim, 
+                           hidden_dim, 
+                           num_layers=num_layers, 
+                           bidirectional=True, 
+                           dropout=dropout_p)
+        
+        self.dropout = nn.Dropout(dropout_p)
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.fc = nn.Linear(hidden_dim * 2, output_dim)
+        
+    def forward(self, x_in, lengths):
+        # text: S x B
+        # embedded: S x B x E
+        embedded = self.dropout(self.embedding(text))
+       
+        # pack sequence
+        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, text_lengths)
+        packed_out, (hidden, cell) = self.rnn(packed_embedded)
+        
+        #unpack sequence
+        out, out_lengths = nn.utils.rnn.pad_packed_sequence(packed_out)
+
+        # out: S x B x (H*2)
+        # output over padding tokens are zero tensors
+        
+        # hidden: (L*2) x B x H
+        # cell: (L*2) x B x H
+        
+        # concat the final forward (hidden[-2,:,:]) and backward (hidden[-1,:,:]) hidden layers
+        # and apply dropout
+        
+        # hidden = B x (H*2)
+        hidden = self.dropout(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1))
+        return self.fc(hidden)
 
 
-class RNN(nn.Module):
+
+class LSTM(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim,
+                 output_dim, num_layers, dropout_p=0., padding_idx=0):
+        
+        super().__init__()
+        
+        self.emb = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
+        
+        self.rnn = nn.LSTM(embedding_dim, 
+                           hidden_dim, 
+                           num_layers=num_layers, 
+                           bidirectional=True, 
+                           dropout=dropout_p)
+        
+        self.dropout = nn.Dropout(dropout_p)
+
+        self.fc = nn.Linear(hidden_dim * 2, output_dim)
+        
+    def forward(self, x_in, lengths):
+        # text: S x B
+        # embedded: S x B x E
+        embedded = self.dropout(self.embedding(text))
+       
+        # pack sequence
+        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, text_lengths)
+        packed_out, (hidden, cell) = self.rnn(packed_embedded)
+        
+        #unpack sequence
+        out, out_lengths = nn.utils.rnn.pad_packed_sequence(packed_out)
+
+        # out: S x B x (H*2)
+        # output over padding tokens are zero tensors
+        
+        # hidden: (L*2) x B x H
+        # cell: (L*2) x B x H
+        
+        # concat the final forward (hidden[-2,:,:]) and backward (hidden[-1,:,:]) hidden layers
+        # and apply dropout
+        
+        # hidden = B x (H*2)
+        hidden = self.dropout(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1))
+        return self.fc(hidden)
+
+
+class PlainRNN(nn.Module):
 
     def __init__(self, embedding_dim, num_embeddings,
                  pretrained_embeddings=None, padding_idx=0,
                  hidden_dim=100, output_dim=1, num_layers=1,
                  bidirectional=False, nonlinearity='tanh', dropout=0.):
-        super(RNN, self).__init__()
+        super().__init__()
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim
@@ -49,13 +136,13 @@ class RNN(nn.Module):
         return y_pred
 
 
-class LSTM(nn.Module):
+class PlainLSTM(nn.Module):
 
     def __init__(self, embedding_dim, num_embeddings,
                  pretrained_embeddings=None, padding_idx=0,
                  hidden_dim=100, output_dim=1, num_layers=1,
                  bidirectional=False, dropout=0.):
-        super(LSTM, self).__init__()
+        super().__init__()
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
         self.output_dim = output_dim

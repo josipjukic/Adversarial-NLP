@@ -22,9 +22,12 @@ def load_glove_embeddings(path):
 def make_embedding_matrix(path, words):
     word_to_index, embeddings = load_glove_embeddings(path)
     embedding_size = embeddings.shape[1]
-    final_emb = np.zeros((len(words), embedding_size))
+    N = len(words) + 2 # unknown and mask
+    final_emb = np.zeros(N, embedding_size))
+    final_emb[0, :] = torch.zeros(embedding_size)
+    final_emb[1, :] = torch.zeros(embedding_size)
 
-    for i, word in enumerate(words):
+    for i, word in enumerate(words, 2):
         if word in word_to_index:
             final_emb[i, :] = embeddings[word_to_index[word]]
         else:

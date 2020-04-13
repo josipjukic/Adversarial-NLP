@@ -69,12 +69,12 @@ class OneHotVectorizer():
         return one_hot
 
 
-def vectorizer_from_dataframe(cls, df, data_name, target_name, cutoff=25):
+def vectorizer_from_dataframe(cls, df, data_name, target_name, max_vocab_size=25_000):
     """Instantiate the vectorizer from the dataset dataframe
     
     Args:
         df (pandas.DataFrame): the dataset
-        cutoff (int): the parameter for frequency-based filtering
+        max_vocab_size (int): maximum size of vocabulary
     Returns:
         an instance of the OneHotVectorizer
     """
@@ -83,19 +83,16 @@ def vectorizer_from_dataframe(cls, df, data_name, target_name, cutoff=25):
     data_vocab = SequenceVocabulary()
     label_vocab = Vocabulary(add_unk=False)
     
-    # Add ratings
     for label in sorted(set(labels)):
         label_vocab.add_token(label)
 
-    # Add top words if count > provided count
     word_counts = Counter()
     for text in corpus:
         for word in text.split(' '):
             if word not in string.punctuation:
                 word_counts[word] += 1
             
-    for word, count in word_counts.items():
-        if count >= cutoff:
-            data_vocab.add_token(word)
+    for word, _ in word_counts.most_common(max_vocab_size):
+        data_vocab.add_token(word)
 
     return cls(data_vocab, label_vocab)

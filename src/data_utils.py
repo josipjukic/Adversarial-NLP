@@ -129,19 +129,20 @@ class Vocabulary(object):
 class SequenceVocabulary(Vocabulary):
     def __init__(self, token_to_idx=None, unk_token="<UNK>",
                  mask_token="<MASK>", begin_seq_token="<BEGIN>",
-                 end_seq_token="<END>"):
+                 end_seq_token="<END>", add_begin_end=False):
 
         super(SequenceVocabulary, self).__init__(token_to_idx, add_unk=False)
 
         self._mask_token = mask_token
-        self._unk_token = unk_token
-        self._begin_seq_token = begin_seq_token
-        self._end_seq_token = end_seq_token
-
         self.mask_index = self.add_token(self._mask_token)
+        self._unk_token = unk_token
         self.unk_index = self.add_token(self._unk_token)
-        self.begin_seq_index = self.add_token(self._begin_seq_token)
-        self.end_seq_index = self.add_token(self._end_seq_token)
+
+        if add_begin_end:
+            self._begin_seq_token = begin_seq_token
+            self.begin_seq_index = self.add_token(self._begin_seq_token)
+            self._end_seq_token = end_seq_token
+            self.end_seq_index = self.add_token(self._end_seq_token)
 
 
 class DataManager(ABC, Dataset):
@@ -299,7 +300,7 @@ class ImdbDataset(DataManager):
         row = self._target_df.iloc[index]
 
         review_vector = \
-            self._vectorizer.vectorize(row.review, ImdbDataset.seq_length + 2)
+            self._vectorizer.vectorize(row.review, ImdbDataset.seq_length)
 
         sentiment_index = \
             self._vectorizer.label_vocab.lookup_token(row.sentiment)

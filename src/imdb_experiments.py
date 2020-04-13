@@ -11,7 +11,7 @@ import torch.optim as optim
 
 from vectorization import EmbeddingVectorizer
 from vectorization import vectorizer_from_dataframe
-from embeddings import GLOVE_6B_50D_PATH
+from embeddings import GLOVE_6B_100D_PATH
 from embeddings import make_embedding_matrix
 from data_utils import (set_seed_everywhere, handle_dirs,
                         pickle_dump, pickle_load)
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     cwd = os.getcwd()
     root = os.path.join(cwd, '..')
     imdb_file_path = os.path.join(root, 'datasets/imdb/imdb_clean_split.csv')
-    emb_file_path = os.path.join(root, GLOVE_6B_50D_PATH)
+    emb_file_path = os.path.join(root, GLOVE_6B_100D_PATH)
     save_path = os.path.join(root, 'save/imdb')
 
     args = Namespace(
@@ -40,8 +40,9 @@ if __name__ == '__main__':
         # Model hyper parameters
         glove_filepath=emb_file_path,
         use_glove=True,
-        embedding_dim=50,
-        hidden_dim=100,
+        embedding_dim=100,
+        hidden_dim=256,
+        num_layers=2,
         # Training hyper parameter
         seed=42,
         learning_rate=0.001,
@@ -117,6 +118,7 @@ if __name__ == '__main__':
                       num_embeddings=len(vectorizer.data_vocab),
                       hidden_dim=args.hidden_dim,
                       output_dim=1,
+                      num_layers=args.num_layers,
                       dropout=args.dropout,
                       pretrained_embeddings=embeddings,
                       padding_idx=0)
@@ -129,12 +131,12 @@ if __name__ == '__main__':
                                                      mode='min', factor=0.5,
                                                      patience=1)
 
-    logging.basicConfig(level=logging.INFO,
-                        format='%(levelname)-8s %(message)s',
-                        filename=args.log_file)
-    logger = logging.getLogger()
-    logger.handlers = [logging.StreamHandler(
-        sys.stderr), logging.FileHandler(args.log_file)]
+    # logging.basicConfig(level=logging.INFO,
+    #                     format='%(levelname)-8s %(message)s',
+    #                     filename=args.log_file)
+    # logger = logging.getLogger()
+    # logger.handlers = [logging.StreamHandler(
+    #     sys.stderr), logging.FileHandler(args.log_file)]
 
-    run_experiment(args, classifier, loss_func,
-                   optimizer, scheduler, dataset, logger)
+    # run_experiment(args, classifier, loss_func,
+    #                optimizer, scheduler, dataset, logger)

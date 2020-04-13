@@ -206,3 +206,118 @@ def run_experiment(args, classifier, loss_func, optimizer, scheduler, dataset, l
     logger.info(f'test_loss = {running_loss}; test_acc = {running_acc}\n')
 
     dump_train_state_to_json(train_state, args.train_state_file)
+
+
+def run(args, model, loss_func, optimizer, scheduler, iterator):
+
+    train_state = make_train_state(args)
+
+    try:
+        for epoch_index in range(args.num_epochs):
+            train_state['epoch_index'] = epoch_index
+
+
+            running_loss = 0.0
+            running_acc = 0.0
+            model.train()
+
+            for batch_index, batch in enumerate(iterator['train']):
+                # 5 step training routine
+
+                # --------------------------------------
+                # 1) zero the gradients
+                optimizer.zero_grad()
+
+                # 2) compute the output
+                x_in, lengths = batch.text
+                y_pred = model(x_in, lengths).squeeze()
+
+                # 3) compute the loss
+                loss = loss_func(y_pred, batch.label)
+                loss_t = loss.item()
+                running_loss += (loss_t - running_loss) / (batch_index + 1)
+
+                # 4) use loss to produce gradients
+                loss.backward()
+
+                # 5) use optimizer to take gradient step
+                optimizer.step()
+                # -----------------------------------------
+
+                # compute the accuracy
+                acc_t = compute_accuracy_binary(y_pred, batch.label)
+                running_acc += (acc_t - running_acc) / (batch_index + 1)
+                logger.info(f'Epoch {epoch_index+1}/{args.num_epochs} | '
+                            f'batch index: {batch_index+1} | '
+                            f'train_loss = {running_loss}; train_acc = {running_acc}\n')
+
+            train_state['train_loss'].append(running_loss)
+            train_state['train_acc'].append(running_acc)
+            logger.info(f'Epoch {epoch_index+1}/{args.num_epochs} | '
+                        f'train_loss = {running_loss}; train_acc = {running_acc}\n')
+
+            # Iterate over val dataset
+
+            # setup: batch generator, set loss and acc to 0; set eval mode on
+            running_loss=0.
+            running_acc=0.
+            model.eval()
+
+            for batch_index, batch_dict in enumerate(iterator['valid']):
+
+                # compute the output
+                x_in, lengths = batch.text
+                y_pred = model(x_in, lengths).squeeze()
+
+                # compute the loss
+                loss = loss_func(y_pred, batch.label)
+                loss_t = loss.item()
+                running_loss += (loss_t - running_loss) / (batch_index + 1)
+
+                # compute the accuracy
+                acc_t = compute_accuracy_binary(y_pred, batch.label)
+                running_acc += (acc_t - running_acc) / (batch_index + 1)
+
+            train_state['val_loss'].append(running_loss)
+            train_state['val_acc'].append(running_acc)
+            logger.info(f'Epoch {epoch_index+1}/{args.num_epochs} | '\
+                        f'val_loss = {running_loss}; val_acc = {running_acc}\n')
+
+            train_state = update_train_state(args=args, model=model,
+                                             train_state=train_state)
+
+            scheduler.step(train_state['val_loss'][-1])
+
+            if train_state['stop_early']:
+                break
+
+    except KeyboardInterrupt:
+        print("Exiting loop...")
+
+
+    # dataset.set_split('test')
+    # batch_generator = generate_batches(dataset,
+    #                                    batch_size=args.batch_size,
+    #                                    device=args.device)
+    # running_loss = 0.
+    # running_acc = 0.
+    # classifier.eval()
+
+    # for batch_index, batch_dict in enumerate(batch_generator):
+    #     # compute the output
+    #     y_pred = classifier(batch_dict['x_data']).squeeze()
+
+    #     # compute the loss
+    #     loss = loss_func(y_pred, batch_dict['y_target'].float())
+    #     loss_t = loss.item()
+    #     running_loss += (loss_t - running_loss) / (batch_index + 1)
+
+    #     # compute the accuracy
+    #     acc_t=compute_accuracy_binary(y_pred, batch_dict['y_target'])
+    #     running_acc += (acc_t - running_acc) / (batch_index + 1)
+
+    # train_state['test_loss']=running_loss
+    # train_state['test_acc']=running_acc
+    # logger.info(f'test_loss = {running_loss}; test_acc = {running_acc}\n')
+
+    # dump_train_state_to_json(train_state, args.train_state_file)

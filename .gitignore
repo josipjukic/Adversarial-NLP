@@ -3,4 +3,7 @@ embeddings/
 .vscode/
 src/__pycache__/
 src/.ipynb_checkpoints/
+src/.data/
+src/.vector_cache/
+src/.save/
 save/
