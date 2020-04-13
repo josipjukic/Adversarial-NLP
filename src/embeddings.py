@@ -20,7 +20,7 @@ def load_glove_embeddings(path):
 
 
 def make_embedding_matrix(path, words):
-    word_to_index, embeddings = load_glove_embeddings(path) 
+    word_to_index, embeddings = load_glove_embeddings(path)
     embedding_size = embeddings.shape[1]
     final_emb = np.zeros((len(words), embedding_size))
 

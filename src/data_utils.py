@@ -2,6 +2,7 @@ from argparse import Namespace
 from collections import Counter
 from abc import (ABC, abstractmethod)
 import pickle
+import json
 import os
 import re
 
@@ -282,6 +283,7 @@ class DataManager(ABC, Dataset):
 class ImdbDataset(DataManager):
 
     target_name = 'sentiment'
+    seq_length = 200
 
     def __getitem__(self, index):
         """
@@ -297,10 +299,10 @@ class ImdbDataset(DataManager):
         row = self._target_df.iloc[index]
 
         review_vector = \
-            self._vectorizer.vectorize(row.review)
+            self._vectorizer.vectorize(row.review, ImdbDataset.seq_length + 2)
 
-        rating_index = \
-            self._vectorizer.rating_vocab.lookup_token(row.sentiment)
+        sentiment_index = \
+            self._vectorizer.label_vocab.lookup_token(row.sentiment)
 
         return {'x_data': review_vector,
                 'y_target': sentiment_index}
@@ -359,6 +361,21 @@ def handle_dirs(dirpath):
         os.makedirs(dirpath)
 
 
+def pickle_dump(obj, filepath):
+    """
+    A static method for saving an object in pickle format.
+    
+    Arguments
+    ---------
+    obj
+        Object to be serialized.
+    filepath : str
+        The location of the serialized object.
+    """
+    with open(filepath, 'wb') as f:
+        pickle.dump(obj, f)
+
+
 def pickle_load(filepath):
     """
     A static method for loading an object from pickle file.
@@ -376,9 +393,9 @@ def pickle_load(filepath):
         return pickle.load(f)
 
 
-def pickle_dump(obj, filepath):
+def json_dump(obj, filepath):
     """
-    A static method for saving an object in pickle format.
+    A static method for saving an object in json format.
     
     Arguments
     ---------
@@ -387,5 +404,22 @@ def pickle_dump(obj, filepath):
     filepath : str
         The location of the serialized object.
     """
-    with open(filepath, 'wb') as f:
-        pickle.dump(obj, f)
+    with open(filepath, 'w') as f:
+        json.dump(obj, f)
+
+
+def json_load(filepath):
+    """
+    A static method for loading an object from json file.
+    
+    Arguments
+    ---------
+    filepath : str
+        The location of the serialized object.
+    
+    Returns
+    -------
+        An instance of a the serialized object.
+    """
+    with open(filepath, 'r') as f:
+        return json.load(f)

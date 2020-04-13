@@ -69,7 +69,7 @@ class OneHotVectorizer():
         return one_hot
 
 
-def vectorizer_from_dataframe(cls, df, data_name, target_name, cutoff=10):
+def vectorizer_from_dataframe(cls, df, data_name, target_name, cutoff=25):
     """Instantiate the vectorizer from the dataset dataframe
     
     Args:
