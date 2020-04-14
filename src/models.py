@@ -46,9 +46,9 @@ class LSTM(nn.Module):
         
         # hidden = B x (H*num_directions)
         if self.bidirectional:
-            hidden = hidden[-1,:,:]
-        else:
             hidden = torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim=1)
+        else:
+            hidden = hidden[-1,:,:]
         
         hidden = self.dropout(hidden)
         return self.fc(hidden)
