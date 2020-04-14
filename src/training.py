@@ -12,8 +12,8 @@ def make_train_state(args):
             'epoch_index': 0,
             'train_loss': [],
             'train_acc': [],
-            'val_loss': [],
-            'val_acc': [],
+            'valid_loss': [],
+            'valid_acc': [],
             'test_loss': [],
             'test_acc': [],
             'model_path': args.model_save_file}
@@ -66,8 +66,8 @@ def dump_train_state_to_json(train_state, path):
     obj = dict(epochs=train_state['epoch_index'],
                train_loss=train_state['train_loss'],
                train_acc=train_state['train_acc'],
-               val_loss=train_state['val_loss'],
-               val_acc=train_state['val_acc'],
+               val_loss=train_state['valid_loss'],
+               val_acc=train_state['valid_acc'],
                test_loss=train_state['test_loss'],
                test_acc=train_state['test_acc'])
     json_dump(obj, path)
@@ -81,20 +81,16 @@ def epoch_time(start_time, end_time):
 
 
 def binary_accuracy(y_pred, y_gold):
-    """
-    Returns accuracy per batch, i.e. if you get 8/10 right, this returns 0.8, NOT 8
-    """
-
     #round predictions to the closest integer
     rounded_preds = torch.round(torch.sigmoid(y_pred))
     correct = (rounded_preds == y_gold).float() # convert into float for division 
     acc = correct.sum() / len(correct)
-    return acc
+    return acc.item()
 
 
-def train(model, iterator, optimizer, criterion, train_state):
+def train(model, iterator, optimizer, criterion, train_state, notebook=True):
     
-    print('Entering training mode...')
+    # print('Entering training mode...')
 
     running_loss = 0.
     running_acc = 0.
@@ -128,8 +124,11 @@ def train(model, iterator, optimizer, criterion, train_state):
         # compute the accuracy
         acc_t = binary_accuracy(y_pred, batch.label)
         running_acc += (acc_t - running_acc) / batch_index
-        print(f'batch index: {batch_index}/{num_batches} | '
-              f'train_loss = {running_loss}; train_acc = {running_acc}')
+
+        if notebook:
+            # update bar
+            train_bar.set_postfix(loss=running_loss, acc=running_acc)
+            train_bar.update()
                 
     train_state['train_loss'].append(running_loss)
     train_state['train_acc'].append(running_acc)
@@ -137,9 +136,9 @@ def train(model, iterator, optimizer, criterion, train_state):
     return running_loss, running_acc
 
 
-def evaluate(model, iterator, criterion, train_state, mode='valid'):
+def evaluate(model, iterator, criterion, train_state, mode='valid', notebook=True):
     
-    print(f'Entering {mode} mode...')
+    # print(f'Entering {mode} mode...')
 
     running_loss = 0.
     running_acc = 0.
@@ -149,7 +148,7 @@ def evaluate(model, iterator, criterion, train_state, mode='valid'):
     
     with torch.no_grad():
     
-        for batch_index, batch in enumerate(iterator, batch):
+        for batch_index, batch in enumerate(iterator, 1):
             x_in, lengths = batch.text
             y_pred = model(x_in, lengths).squeeze()
 
@@ -159,8 +158,11 @@ def evaluate(model, iterator, criterion, train_state, mode='valid'):
             
             acc_t = binary_accuracy(y_pred, batch.label)
             running_acc += (acc_t - running_acc) / batch_index
-            print(f'batch index: {batch_index}/{num_batches} | '
-                  f'{mode}_loss = {running_loss}; {mode}_acc = {running_acc}')
+
+            if notebook:
+                # update bar
+                val_bar.set_postfix(loss=running_loss, acc=running_acc)
+                val_bar.update()
     
     train_state[f'{mode}_loss'].append(running_loss)
     train_state[f'{mode}_acc'].append(running_acc)
@@ -168,16 +170,18 @@ def evaluate(model, iterator, criterion, train_state, mode='valid'):
     return running_loss, running_acc
 
 
-def run_experiment(args, model, iterator, optimizer, criterion):
-    
+def run_experiment(args, model, iterator, optimizer, criterion, notebook=True):
+
     train_state = make_train_state(args)
 
     for epoch in range(args.num_epochs):
 
         start_time = time.time()
         
-        train_loss, train_acc = train(model, iterator['train'], optimizer, criterion, train_state)
-        valid_loss, valid_acc = evaluate(model, iterator['valid'], criterion, train_state)
+        train_loss, train_acc = train(model, iterator['train'], optimizer,
+                                      criterion, train_state, notebook=notebook)
+        valid_loss, valid_acc = evaluate(model, iterator['valid'], criterion,
+                                         train_state, notebook=notebook)
         
         end_time = time.time()
 
@@ -185,16 +189,20 @@ def run_experiment(args, model, iterator, optimizer, criterion):
 
         train_state = update_train_state(args=args, model=model,
                                          train_state=train_state)
+        
+        print(f'Epoch: {epoch+1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
+        print(f'    Train Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}%')
+        print(f'    Valid Loss: {valid_loss:.3f} |  Valid Acc: {valid_acc*100:.2f}%')
 
         if train_state['stop_early']:
             break
-        
-        print(f'Epoch: {epoch+1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
-        print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}%')
-        print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc*100:.2f}%')
 
+        if notebook:
+            # update bars
+            train_bar.n = 0
+            val_bar.n = 0
+            epoch_bar.update()
 
-
-    test_loss, test_acc = evaluate(model, iterator['test'], criterion, train_state, mode='test')
+    test_loss, test_acc = evaluate(model, iterator['test'], criterion, train_state, mode='test', notebook=False)
     print(f'test_loss = {test_loss}; test_acc = {test_acc}')
     dump_train_state_to_json(train_state, args.train_state_file)

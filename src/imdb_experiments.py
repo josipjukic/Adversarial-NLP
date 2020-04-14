@@ -55,6 +55,11 @@ if __name__ == '__main__':
         reload_from_files=True,
         expand_filepaths_to_save_dir=True)
 
+
+    def expand_paths(root, paths):
+        for i, path in enumerate(paths):
+            paths[i] = os.path.join(root, path)
+
     if args.expand_filepaths_to_save_dir:
         args.vectorizer_file = os.path.join(args.save_dir,
                                             args.vectorizer_file)
