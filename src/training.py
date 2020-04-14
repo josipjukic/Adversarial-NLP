@@ -1,4 +1,5 @@
 import torch
+import time
 from data_utils import (json_dump, generate_batches)
 
 
@@ -84,7 +85,7 @@ def compute_accuracy(y_pred, y_target):
     return n_correct / len(y_pred_indices) * 100
 
 
-def run_experiment(args, classifier, loss_func, optimizer, scheduler, dataset, logger):
+def run_experiment(args, classifier, loss_func, optimizer, dataset, logger):
 
     train_state = make_train_state(args)
 
@@ -171,7 +172,6 @@ def run_experiment(args, classifier, loss_func, optimizer, scheduler, dataset, l
             train_state = update_train_state(args=args, model=classifier,
                                              train_state=train_state)
 
-            scheduler.step(train_state['val_loss'][-1])
 
             if train_state['stop_early']:
                 break
@@ -208,7 +208,7 @@ def run_experiment(args, classifier, loss_func, optimizer, scheduler, dataset, l
     dump_train_state_to_json(train_state, args.train_state_file)
 
 
-def run(args, model, loss_func, optimizer, scheduler, iterator):
+def run(args, model, loss_func, optimizer, iterator):
 
     train_state = make_train_state(args)
 
@@ -247,13 +247,13 @@ def run(args, model, loss_func, optimizer, scheduler, iterator):
                 # compute the accuracy
                 acc_t = compute_accuracy_binary(y_pred, batch.label)
                 running_acc += (acc_t - running_acc) / (batch_index + 1)
-                logger.info(f'Epoch {epoch_index+1}/{args.num_epochs} | '
+                print(f'Epoch {epoch_index+1}/{args.num_epochs} | '
                             f'batch index: {batch_index+1} | '
                             f'train_loss = {running_loss}; train_acc = {running_acc}\n')
 
             train_state['train_loss'].append(running_loss)
             train_state['train_acc'].append(running_acc)
-            logger.info(f'Epoch {epoch_index+1}/{args.num_epochs} | '
+            print(f'Epoch {epoch_index+1}/{args.num_epochs} | '
                         f'train_loss = {running_loss}; train_acc = {running_acc}\n')
 
             # Iterate over val dataset
@@ -280,13 +280,11 @@ def run(args, model, loss_func, optimizer, scheduler, iterator):
 
             train_state['val_loss'].append(running_loss)
             train_state['val_acc'].append(running_acc)
-            logger.info(f'Epoch {epoch_index+1}/{args.num_epochs} | '\
+            print(f'Epoch {epoch_index+1}/{args.num_epochs} | '\
                         f'val_loss = {running_loss}; val_acc = {running_acc}\n')
 
             train_state = update_train_state(args=args, model=model,
                                              train_state=train_state)
-
-            scheduler.step(train_state['val_loss'][-1])
 
             if train_state['stop_early']:
                 break
@@ -321,3 +319,100 @@ def run(args, model, loss_func, optimizer, scheduler, iterator):
     # logger.info(f'test_loss = {running_loss}; test_acc = {running_acc}\n')
 
     # dump_train_state_to_json(train_state, args.train_state_file)
+
+
+def train(model, iterator, optimizer, criterion):
+    
+    epoch_loss = 0
+    epoch_acc = 0
+    
+    model.train()
+    
+    for batch in iterator:
+        print('NEW BATCH')
+        optimizer.zero_grad()
+        
+        text, text_lengths = batch.text
+        
+        predictions = model(text, text_lengths).squeeze(1)
+        
+        loss = criterion(predictions, batch.label)
+        
+        acc = binary_accuracy(predictions, batch.label)
+        
+        loss.backward()
+        
+        optimizer.step()
+        
+        epoch_loss += loss.item()
+        epoch_acc += acc.item()
+        
+    return epoch_loss / len(iterator), epoch_acc / len(iterator)
+
+
+def evaluate(model, iterator, criterion):
+    
+    epoch_loss = 0
+    epoch_acc = 0
+    
+    model.eval()
+    
+    with torch.no_grad():
+    
+        for batch in iterator:
+
+            text, text_lengths = batch.text
+            
+            predictions = model(text, text_lengths).squeeze(1)
+            
+            loss = criterion(predictions, batch.label)
+            
+            acc = binary_accuracy(predictions, batch.label)
+
+            epoch_loss += loss.item()
+            epoch_acc += acc.item()
+        
+    return epoch_loss / len(iterator), epoch_acc / len(iterator)
+
+
+def epoch_time(start_time, end_time):
+    elapsed_time = end_time - start_time
+    elapsed_mins = int(elapsed_time / 60)
+    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+    return elapsed_mins, elapsed_secs
+
+
+def binary_accuracy(preds, y):
+    """
+    Returns accuracy per batch, i.e. if you get 8/10 right, this returns 0.8, NOT 8
+    """
+
+    #round predictions to the closest integer
+    rounded_preds = torch.round(torch.sigmoid(preds))
+    correct = (rounded_preds == y).float() #convert into float for division 
+    acc = correct.sum() / len(correct)
+    return acc
+
+
+def run_exp(model, train_iterator, valid_iterator, optimizer, criterion):
+    N_EPOCHS = 20
+    best_valid_loss = float('inf')
+    print('START')
+    for epoch in range(N_EPOCHS):
+
+        start_time = time.time()
+        
+        train_loss, train_acc = train(model, train_iterator, optimizer, criterion)
+        valid_loss, valid_acc = evaluate(model, valid_iterator, criterion)
+        
+        end_time = time.time()
+
+        epoch_mins, epoch_secs = epoch_time(start_time, end_time)
+        
+        if valid_loss < best_valid_loss:
+            best_valid_loss = valid_loss
+            torch.save(model.state_dict(), 'tut2-model.pt')
+        
+        print(f'Epoch: {epoch+1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
+        print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc*100:.2f}%')
+        print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc*100:.2f}%')

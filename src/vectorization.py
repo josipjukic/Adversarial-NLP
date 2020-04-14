@@ -26,10 +26,8 @@ class EmbeddingVectorizer():
         Returns:
             vectorized text (numpy.array)
         """
-        indices = [self.data_vocab.begin_seq_index]
-        indices.extend(self.data_vocab.lookup_token(token) 
-                       for token in text.split(" "))
-        indices.append(self.data_vocab.end_seq_index)
+        indices = [self.data_vocab.lookup_token(token) 
+                       for token in text.split(" ")]
 
         if vector_length < 0:
             vector_length = len(indices)

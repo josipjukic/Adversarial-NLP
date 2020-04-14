@@ -3,22 +3,22 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class BiLSTM(nn.Module):
+class LSTM(nn.Module):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
-                 num_layers, pretrained_embeddings,
+                 num_layers, pretrained_embeddings, bidirectional,
                  dropout_p=0., padding_idx=0):
         
         super().__init__()
-        
+        self.bidirectional = bidirectional
+
         self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
-                                                padding_idx=padding_idx)
-        
+                                                      padding_idx=padding_idx)
         self.rnn = nn.LSTM(embedding_dim, 
                            hidden_dim, 
                            num_layers=num_layers, 
-                           bidirectional=True, 
-                           dropout=dropout_p)
-        
+                           bidirectional=bidirectional, 
+                           dropout=(0. if num_layers > 1 else dropout_p))
+
         self.dropout = nn.Dropout(dropout_p)
 
         self.fc = nn.Linear(hidden_dim * 2, output_dim)
@@ -26,71 +26,31 @@ class BiLSTM(nn.Module):
     def forward(self, x_in, lengths):
         # text: S x B
         # embedded: S x B x E
-        embedded = self.dropout(self.embedding(text))
+        embedded = self.dropout(self.embedding(x_in))
        
         # pack sequence
-        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, text_lengths)
+        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, lengths)
         packed_out, (hidden, cell) = self.rnn(packed_embedded)
         
         #unpack sequence
         out, out_lengths = nn.utils.rnn.pad_packed_sequence(packed_out)
 
-        # out: S x B x (H*2)
+        # out: S x B x (H*num_directions)
         # output over padding tokens are zero tensors
         
-        # hidden: (L*2) x B x H
-        # cell: (L*2) x B x H
+        # hidden: (L*num_directions) x B x H
+        # cell: (L*num_directions) x B x H
         
         # concat the final forward (hidden[-2,:,:]) and backward (hidden[-1,:,:]) hidden layers
         # and apply dropout
         
-        # hidden = B x (H*2)
-        hidden = self.dropout(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1))
-        return self.fc(hidden)
-
-
-
-class LSTM(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_dim,
-                 output_dim, num_layers, dropout_p=0., padding_idx=0):
+        # hidden = B x (H*num_directions)
+        if self.bidirectional:
+            hidden = hidden[-1,:,:]
+        else:
+            hidden = torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim=1)
         
-        super().__init__()
-        
-        self.emb = nn.Embedding(vocab_size, embedding_dim, padding_idx=padding_idx)
-        
-        self.rnn = nn.LSTM(embedding_dim, 
-                           hidden_dim, 
-                           num_layers=num_layers, 
-                           bidirectional=True, 
-                           dropout=dropout_p)
-        
-        self.dropout = nn.Dropout(dropout_p)
-
-        self.fc = nn.Linear(hidden_dim * 2, output_dim)
-        
-    def forward(self, x_in, lengths):
-        # text: S x B
-        # embedded: S x B x E
-        embedded = self.dropout(self.embedding(text))
-       
-        # pack sequence
-        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, text_lengths)
-        packed_out, (hidden, cell) = self.rnn(packed_embedded)
-        
-        #unpack sequence
-        out, out_lengths = nn.utils.rnn.pad_packed_sequence(packed_out)
-
-        # out: S x B x (H*2)
-        # output over padding tokens are zero tensors
-        
-        # hidden: (L*2) x B x H
-        # cell: (L*2) x B x H
-        
-        # concat the final forward (hidden[-2,:,:]) and backward (hidden[-1,:,:]) hidden layers
-        # and apply dropout
-        
-        # hidden = B x (H*2)
-        hidden = self.dropout(torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim = 1))
+        hidden = self.dropout(hidden)
         return self.fc(hidden)
 
 

@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from models import BiLSTM
-from training import run
+from training import run_exp
 from data_utils import (handle_dirs, pickle_dump, pickle_load)
 
 
@@ -112,11 +112,8 @@ model = BiLSTM(
     PAD_IDX
 )
 
-loss_func = nn.BCEWithLogitsLoss()
-optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
-scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,
-                                                 mode='min', factor=0.5,
-                                                 patience=1)
+criterion = nn.BCEWithLogitsLoss()
+optimizer = optim.Adam(model.parameters())
 
 iterator = dict(train=train_iterator, test=test_iterator, valid=valid_iterator)
-run(args, model, loss_func, optimizer, scheduler, iterator)
+run_exp(model, train_iterator, valid_iterator, optimizer, criterion)

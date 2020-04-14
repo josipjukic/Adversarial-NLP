@@ -16,7 +16,7 @@ from embeddings import make_embedding_matrix
 from data_utils import (set_seed_everywhere, handle_dirs,
                         pickle_dump, pickle_load)
 from data_utils import ImdbDataset
-from models import LSTM
+from models import PlainRNN
 from training import run_experiment
 
 
@@ -114,8 +114,8 @@ if __name__ == '__main__':
         print("Not using pre-trained embeddings")
         embeddings = None
 
-    classifier = LSTM(embedding_dim=args.embedding_dim,
-                      num_embeddings=len(vectorizer.data_vocab),
+    classifier = PlainRNN(embedding_dim=args.embedding_dim,
+                      num_embeddings=len(vectorizer.data_vocab)+2,
                       hidden_dim=args.hidden_dim,
                       output_dim=1,
                       num_layers=args.num_layers,
@@ -126,17 +126,14 @@ if __name__ == '__main__':
     classifier = classifier.to(args.device)
 
     loss_func = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(classifier.parameters(), lr=args.learning_rate)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer=optimizer,
-                                                     mode='min', factor=0.5,
-                                                     patience=1)
+    optimizer = optim.Adam(classifier.parameters())
 
-    # logging.basicConfig(level=logging.INFO,
-    #                     format='%(levelname)-8s %(message)s',
-    #                     filename=args.log_file)
-    # logger = logging.getLogger()
-    # logger.handlers = [logging.StreamHandler(
-    #     sys.stderr), logging.FileHandler(args.log_file)]
+    logging.basicConfig(level=logging.INFO,
+                        format='%(levelname)-8s %(message)s',
+                        filename=args.log_file)
+    logger = logging.getLogger()
+    logger.handlers = [logging.StreamHandler(
+        sys.stderr), logging.FileHandler(args.log_file)]
 
-    # run_experiment(args, classifier, loss_func,
-    #                optimizer, scheduler, dataset, logger)
+    run_experiment(args, classifier, loss_func,
+                   optimizer, dataset, logger)
