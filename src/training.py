@@ -81,7 +81,7 @@ def epoch_time(start_time, end_time):
 
 
 def binary_accuracy(y_pred, y_gold):
-    #round predictions to the closest integer
+    # round predictions to the closest integer
     rounded_preds = torch.round(torch.sigmoid(y_pred))
     correct = (rounded_preds == y_gold).float() # convert into float for division 
     acc = correct.sum() / len(correct)
