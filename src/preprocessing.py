@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 
 
 def strip_html(text):
-    soup = BeautifulSoup(text, "html.parser")
+    soup = BeautifulSoup(text, 'html.parser')
     return soup.get_text()
 
 
