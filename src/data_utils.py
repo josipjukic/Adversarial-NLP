@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import (Dataset, DataLoader)
+from torchtext import data
 
 
 def save_data(data, filepath, label='label', tokenized=True):
