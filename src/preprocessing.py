@@ -56,7 +56,7 @@ def remove_stopwords(text, is_lower_case=True):
     return filtered_text
 
 
-def imdb_preprocess(texts):
+def imdb_preprocess(text):
     text = text.lower()
     text = denoise_text(text)
     text = remove_special_characters(text)
@@ -64,7 +64,7 @@ def imdb_preprocess(texts):
     return text
 
 
-def imdb_preprocess_cutoff(texts, size=200):
+def imdb_preprocess_cutoff(text, size=200):
     text = text.lower()
     text = denoise_text(text)
     text = remove_special_characters(text)
