@@ -362,6 +362,11 @@ def handle_dirs(dirpath):
         os.makedirs(dirpath)
 
 
+def expand_paths(args):
+    args.model_save_file = os.path.join(args.save_dir, args.model_save_file)
+    args.train_state_file = os.path.join(args.save_dir, args.train_state_file)
+
+
 def pickle_dump(obj, filepath):
     """
     A static method for saving an object in pickle format.
