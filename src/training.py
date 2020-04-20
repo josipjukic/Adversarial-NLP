@@ -88,7 +88,7 @@ def binary_accuracy(y_pred, y_gold):
     return acc.item()
 
 
-def train(model, iterator, optimizer, criterion, train_state, notebook=True):
+def train(model, iterator, optimizer, criterion, train_state, tqdms=None):
     
     # print('Entering training mode...')
 
@@ -125,10 +125,10 @@ def train(model, iterator, optimizer, criterion, train_state, notebook=True):
         acc_t = binary_accuracy(y_pred, batch.label)
         running_acc += (acc_t - running_acc) / batch_index
 
-        if notebook:
+        if tqdms:
             # update bar
-            train_bar.set_postfix(loss=running_loss, acc=running_acc)
-            train_bar.update()
+            tqdms['train'].set_postfix(loss=running_loss, acc=running_acc)
+            tqdms['train'].update()
                 
     train_state['train_loss'].append(running_loss)
     train_state['train_acc'].append(running_acc)
@@ -136,7 +136,7 @@ def train(model, iterator, optimizer, criterion, train_state, notebook=True):
     return running_loss, running_acc
 
 
-def evaluate(model, iterator, criterion, train_state, mode='valid', notebook=True):
+def evaluate(model, iterator, criterion, train_state, mode='valid', tqdms=None):
     
     # print(f'Entering {mode} mode...')
 
@@ -159,10 +159,10 @@ def evaluate(model, iterator, criterion, train_state, mode='valid', notebook=Tru
             acc_t = binary_accuracy(y_pred, batch.label)
             running_acc += (acc_t - running_acc) / batch_index
 
-            if notebook:
+            if tqdms:
                 # update bar
-                val_bar.set_postfix(loss=running_loss, acc=running_acc)
-                val_bar.update()
+                tqdms['valid'].set_postfix(loss=running_loss, acc=running_acc)
+                tqdms['valid'].update()
     
     train_state[f'{mode}_loss'].append(running_loss)
     train_state[f'{mode}_acc'].append(running_acc)
@@ -170,7 +170,7 @@ def evaluate(model, iterator, criterion, train_state, mode='valid', notebook=Tru
     return running_loss, running_acc
 
 
-def run_experiment(args, model, iterator, optimizer, criterion, notebook=True):
+def run_experiment(args, model, iterator, optimizer, criterion, tqdms):
 
     train_state = make_train_state(args)
 
@@ -179,9 +179,9 @@ def run_experiment(args, model, iterator, optimizer, criterion, notebook=True):
         start_time = time.time()
         
         train_loss, train_acc = train(model, iterator['train'], optimizer,
-                                      criterion, train_state, notebook=notebook)
+                                      criterion, train_state, tqdms)
         valid_loss, valid_acc = evaluate(model, iterator['valid'], criterion,
-                                         train_state, notebook=notebook)
+                                         train_state, tqdms=tqdms)
         
         end_time = time.time()
 
@@ -197,12 +197,12 @@ def run_experiment(args, model, iterator, optimizer, criterion, notebook=True):
         if train_state['stop_early']:
             break
 
-        if notebook:
+        if tqdms:
             # update bars
-            train_bar.n = 0
-            val_bar.n = 0
-            epoch_bar.update()
+            tqdms['train'].n = 0
+            tqdms['valid'].n = 0
+            tqdms['main'].update()
 
-    test_loss, test_acc = evaluate(model, iterator['test'], criterion, train_state, mode='test', notebook=False)
+    test_loss, test_acc = evaluate(model, iterator['test'], criterion, train_state, mode='test')
     print(f'test_loss = {test_loss}; test_acc = {test_acc}')
     dump_train_state_to_json(train_state, args.train_state_file)
