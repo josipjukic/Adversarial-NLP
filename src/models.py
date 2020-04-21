@@ -183,18 +183,18 @@ class PackedRNN(nn.Module):
         hidden = self.dropout(hidden)
         return self.fc(hidden)
 
-    def predict_proba(self, x_in):
+    def predict_proba(self, x_in, lengths):
         self.eval()
-        y_pred = self.forward(x_in)
+        y_pred = self.forward(x_in, lengths)
         if self.output_dim == 1:
             y_pred = F.sigmoid(y_pred)
         else:
             y_pred = F.softmax
         return y_pred
 
-    def predict(self, x_in):
+    def predict(self, x_in, lengths):
         self.eval()
-        y_pred = self.forward(x_in)
+        y_pred = self.forward(x_in, lengths)
         if self.output_dim == 1:
             y_pred = F.sigmoid(y_pred)
             out = torch.as_tensor((output - 0.5) > 0, dtype=torch.int32)  
@@ -255,18 +255,18 @@ class PackedLSTM(nn.Module):
         hidden = self.dropout(hidden)
         return self.fc(hidden)
 
-    def predict_proba(self, x_in):
+    def predict_proba(self, x_in, lengths):
         self.eval()
-        y_pred = self.forward(x_in)
+        y_pred = self.forward(x_in, lengths)
         if self.output_dim == 1:
             y_pred = F.sigmoid(y_pred)
         else:
             y_pred = F.softmax
         return y_pred
 
-    def predict(self, x_in):
+    def predict(self, x_in, lengths):
         self.eval()
-        y_pred = self.forward(x_in)
+        y_pred = self.forward(x_in, lengths)
         if self.output_dim == 1:
             y_pred = F.sigmoid(y_pred)
             out = torch.as_tensor((output - 0.5) > 0, dtype=torch.int32)  

@@ -129,14 +129,15 @@ def train(model, iterator, optimizer, criterion, train_state, tqdms=None):
             # update bar
             tqdms['train'].set_postfix(loss=running_loss, acc=running_acc)
             tqdms['train'].update()
-                
-    train_state['train_loss'].append(running_loss)
-    train_state['train_acc'].append(running_acc)
+
+    if train_state:         
+        train_state['train_loss'].append(running_loss)
+        train_state['train_acc'].append(running_acc)
 
     return running_loss, running_acc
 
 
-def evaluate(model, iterator, criterion, train_state, mode='valid', tqdms=None):
+def evaluate(model, iterator, criterion, train_state=None, mode='valid', tqdms=None):
     
     # print(f'Entering {mode} mode...')
 
@@ -164,8 +165,9 @@ def evaluate(model, iterator, criterion, train_state, mode='valid', tqdms=None):
                 tqdms['valid'].set_postfix(loss=running_loss, acc=running_acc)
                 tqdms['valid'].update()
     
-    train_state[f'{mode}_loss'].append(running_loss)
-    train_state[f'{mode}_acc'].append(running_acc)
+    if train_state:
+        train_state[f'{mode}_loss'].append(running_loss)
+        train_state[f'{mode}_acc'].append(running_acc)
         
     return running_loss, running_acc
 
