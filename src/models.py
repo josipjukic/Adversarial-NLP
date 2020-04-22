@@ -60,7 +60,7 @@ class RNN(nn.Module):
         y_pred = self.forward(x_in)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.int32)  
+            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long)  
         else:
             y_pred = F.softmax(y_pred, dim=1)
             out = torch.argmax(y_pred, dim=1)
@@ -127,7 +127,7 @@ class LSTM(nn.Module):
         y_pred = self.forward(x_in)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.int32)  
+            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long)  
         else:
             y_pred = F.softmax(y_pred, dim=1)
             out = torch.argmax(y_pred, dim=1)
@@ -155,7 +155,8 @@ class PackedRNN(nn.Module):
 
         self.fc = nn.Linear(hidden_dim * 2, output_dim)
         
-    def forward(self, x_in, lengths):
+    def forward(self, batch):
+        x_in, lengths = batch
         # x_in: S x B
         # embedded: S x B x E
         embedded = self.dropout(self.embedding(x_in))
@@ -183,7 +184,8 @@ class PackedRNN(nn.Module):
         hidden = self.dropout(hidden)
         return self.fc(hidden)
 
-    def predict_proba(self, x_in, lengths):
+    def predict_proba(self, batch):
+        x_in, lengths = batch
         self.eval()
         y_pred = self.forward(x_in, lengths)
         if self.output_dim == 1:
@@ -192,12 +194,13 @@ class PackedRNN(nn.Module):
             y_pred = F.softmax
         return y_pred
 
-    def predict(self, x_in, lengths):
+    def predict(self, batch):
+        x_in, lengths = batch
         self.eval()
         y_pred = self.forward(x_in, lengths)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.int32)  
+            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long)  
         else:
             y_pred = F.softmax(y_pred, dim=1)
             out = torch.argmax(y_pred, dim=1)
@@ -227,7 +230,8 @@ class PackedLSTM(nn.Module):
 
         self.fc = nn.Linear(hidden_dim * 2, output_dim)
         
-    def forward(self, x_in, lengths):
+    def forward(self, batch):
+        x_in, lengths = batch
         # x_in: S x B
         # embedded: S x B x E
         embedded = self.dropout(self.embedding(x_in))
@@ -255,7 +259,8 @@ class PackedLSTM(nn.Module):
         hidden = self.dropout(hidden)
         return self.fc(hidden)
 
-    def predict_proba(self, x_in, lengths):
+    def predict_proba(self, batch):
+        x_in, lengths = batch
         self.eval()
         y_pred = self.forward(x_in, lengths)
         if self.output_dim == 1:
@@ -264,12 +269,13 @@ class PackedLSTM(nn.Module):
             y_pred = F.softmax
         return y_pred
 
-    def predict(self, x_in, lengths):
+    def predict(self, batch):
+        x_in, lengths = batch
         self.eval()
         y_pred = self.forward(x_in, lengths)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.int32)  
+            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long)  
         else:
             y_pred = F.softmax(y_pred, dim=1)
             out = torch.argmax(y_pred, dim=1)
