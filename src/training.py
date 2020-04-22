@@ -106,8 +106,7 @@ def train(model, iterator, optimizer, criterion, train_state, tqdms=None):
         optimizer.zero_grad()
         
         # 2) compute the output
-        x_in, lengths = batch.text
-        y_pred = model(x_in, lengths).squeeze()
+        y_pred = model(batch.text).squeeze()
 
         # 3) compute the loss
         loss = criterion(y_pred, batch.label)
@@ -150,8 +149,7 @@ def evaluate(model, iterator, criterion, train_state=None, mode='valid', tqdms=N
     with torch.no_grad():
     
         for batch_index, batch in enumerate(iterator, 1):
-            x_in, lengths = batch.text
-            y_pred = model(x_in, lengths).squeeze()
+            y_pred = model(batch.text).squeeze()
 
             loss = criterion(y_pred, batch.label)
             loss_t = loss.item()

@@ -110,18 +110,19 @@ def word_target(model, inputs, lengths, y_preds, num_classes, device):
     for i in range(inputs.shape[0]):
         if target:
             index, vals = target
-            inputs[i,:] = vals
-        target = (i, inputs[i,:])
+            inputs[i-1,:] = vals
+        target = (i, torch.clone(inputs[i,:]))
         inputs[i,:] = 0
         with torch.no_grad():
             out = model.predict_proba(inputs, lengths)
             if num_classes == 2:
                 out = torch.cat([1.-out, out], dim=1).to(device)
             losses[i,:] = out.gather(1, y_preds).squeeze()
+    
     if target:
         index, vals = target
-        inputs[i,:] = vals
-    return losses
+        inputs[-1,:] = vals
+    return 1.-losses
 
 
 def temporal(model, inputs, lengths, y_preds, num_classes, device):
