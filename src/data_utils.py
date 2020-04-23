@@ -5,6 +5,7 @@ import pickle
 import json
 import os
 import re
+import spacy
 
 import numpy as np
 import pandas as pd
@@ -13,42 +14,57 @@ from torch.utils.data import (Dataset, DataLoader)
 from torchtext import data
 
 
-def save_data(data, filepath, label='label', tokenized=True):
-  entries = []
-  textify = lambda x: x if tokenized else lambda x: ''.join(x)
-  for example in data.examples:
-    entry = dict(text=textify(example.text), label=example.label)
-    entries.append(json.dumps(entry))
+def save_data(data, filepath, nlp, id):
+    entries = []
+    for example in data.examples:
+        entry = dict(text=[token.text for token in nlp(example.text)],
+                     label=example.label,
+                     raw=example.text,
+                     id=id)
+        entries.append(json.dumps(entry))
+        id += 1
 
-  json_dicts = '\n'.join(entries)
-  with open(filepath, 'w') as f:
-    f.write(json_dicts)
-  print(f'Saved data at {filepath}.')
+    json_dicts = '\n'.join(entries)
+    with open(filepath, 'w') as f:
+        f.write(json_dicts)
+    print(f'Saved data at {filepath}.')
+    return id
 
 
-def save_dataset(dataset, path, label='label', tokenized=True):
-  for mode in ['train', 'test', 'valid']:
-    filepath = os.path.join(path, f'{mode}.json')
-    save_data(dataset[mode], filepath, label, tokenized)
+def save_dataset(dataset, path):
+    nlp = spacy.load('en', disable=['parser', 'tagger', 'ner', 'textcat'])
+    id = 0
+    for mode in ['train', 'test', 'valid']:
+        filepath = os.path.join(path, f'{mode}.json')
+        id = save_data(dataset[mode], filepath, nlp, id)
 
 
 def load_dataset(path, include_lengths=True, lower=False, stop_words=None):
-  text_field = data.Field(include_lengths=include_lengths,
-                          lower=lower,
-                          stop_words=stop_words)
-  label_field = data.LabelField(dtype=torch.float)
+    TEXT = data.Field(include_lengths=include_lengths,
+                      lower=lower,
+                      stop_words=stop_words)
+    LABEL = data.LabelField(dtype=torch.float)
+    RAW = data.RawField()
+    ID = data.RawField()
 
-  fields = {'text': ('text', text_field), 'label': ('label', label_field)}
+    fields = {'text': ('text', TEXT),
+              'label': ('label', LABEL),
+              'raw': ('raw', RAW),
+              'id': ('id', ID)}
 
-  train_data, valid_data, test_data = data.TabularDataset.splits(
-                                          path=path,
-                                          train='train.json',
-                                          validation='valid.json',
-                                          test='test.json',
-                                          format='json',
-                                          fields=fields)
+    splits = data.TabularDataset.splits(
+                                path=path,
+                                train='train.json',
+                                validation='valid.json',
+                                test='test.json',
+                                format='json',
+                                fields=fields)
 
-  return train_data, valid_data, test_data, text_field, label_field
+    return splits, (TEXT, LABEL, RAW, ID)
+
+
+def spacy_revtok(nlp, tokens):
+    return ''.join(token.text_with_ws for token in tokens)
 
 
 def handle_dirs(dirpath):
@@ -64,7 +80,7 @@ def expand_paths(args):
 def pickle_dump(obj, filepath):
     """
     A static method for saving an object in pickle format.
-    
+
     Arguments
     ---------
     obj
@@ -79,12 +95,12 @@ def pickle_dump(obj, filepath):
 def pickle_load(filepath):
     """
     A static method for loading an object from pickle file.
-    
+
     Arguments
     ---------
     filepath : str
         The location of the serialized object.
-    
+
     Returns
     -------
         An instance of a the serialized object.
@@ -96,7 +112,7 @@ def pickle_load(filepath):
 def json_dump(obj, filepath):
     """
     A static method for saving an object in json format.
-    
+
     Arguments
     ---------
     obj
@@ -111,12 +127,12 @@ def json_dump(obj, filepath):
 def json_load(filepath):
     """
     A static method for loading an object from json file.
-    
+
     Arguments
     ---------
     filepath : str
         The location of the serialized object.
-    
+
     Returns
     -------
         An instance of a the serialized object.
