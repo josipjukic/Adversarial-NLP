@@ -2,26 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-# from torch.autograd import Variable
 import argparse
 import model
 import math
 
 import numpy as np
-
-
 import sys
-# Input:
-# model: the torch model
-# input: the input at current stage
-#        Torch tensor with size (Batchsize,length)
-# Output: score with size (batchsize, length)
-
-
-def random(model, inputs, pred, classes):
-    losses = torch.rand(inputs.size()[0], inputs.size()[1])
-    return losses
-    # Output a random list
 
 
 def replaceone(model, inputs, pred, classes):
@@ -33,42 +19,6 @@ def replaceone(model, inputs, pred, classes):
             tempoutput = model(tempinputs)
         losses[:, i] = F.nll_loss(tempoutput, pred, reduce=False)
     return losses
-
-
-def temporal(model, inputs, pred, classes):
-    losses1 = torch.zeros(inputs.size()[0], inputs.size()[1])
-    dloss = torch.zeros(inputs.size()[0], inputs.size()[1])
-    for i in range(inputs.size()[1]):
-        tempinputs = inputs[:, :i+1]
-        with torch.no_grad():
-            tempoutput = torch.exp(model(tempinputs))
-        losses1[:, i] = tempoutput.gather(1, pred.view(-1, 1)).view(-1)
-    dloss[:, 0] = losses1[:, 0] - 1.0/classes
-    for i in range(1, inputs.size()[1]):
-        dloss[:, i] = losses1[:, i] - losses1[:, i-1]
-    return dloss
-
-
-def temporaltail(model, inputs, pred, classes):
-    losses1 = torch.zeros(inputs.size()[0], inputs.size()[1])
-    dloss = torch.zeros(inputs.size()[0], inputs.size()[1])
-    for i in range(inputs.size()[1]):
-        tempinputs = inputs[:, i:]
-        with torch.no_grad():
-            tempoutput = torch.exp(model(tempinputs))
-        losses1[:, i] = tempoutput.gather(1, pred.view(-1, 1)).view(-1)
-    dloss[:, -1] = losses1[:, -1] - 1.0/classes
-    for i in range(inputs.size()[1]-1):
-        dloss[:, i] = losses1[:, i] - losses1[:, i+1]
-    return dloss
-
-
-def combined(model, inputs, lengths, y_preds, num_classes, device, λ=1.):
-    temporal_score = temporal(model, x_in, lengths,
-                              y_preds, num_classes, device)
-    temporal_tail_score = temporal_tail(
-        model, x_in, lengths, y_preds, num_classes, device)
-    return temporal_score + *temporal_tail_score
 
 
 def grad(model, inputs, pred, classes):
@@ -100,8 +50,6 @@ def grad_unconstrained(model, inputs, pred, classes):
     loss.backward()
     score = embd.grad.norm(2, dim=2)
     return score
-
-
 
 
 def word_target(model, inputs, lengths, y_preds, num_classes, device):

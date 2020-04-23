@@ -185,9 +185,8 @@ class PackedRNN(nn.Module):
         return self.fc(hidden)
 
     def predict_proba(self, batch):
-        x_in, lengths = batch
         self.eval()
-        y_pred = self.forward(x_in, lengths)
+        y_pred = self.forward(batch)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
         else:
@@ -195,9 +194,8 @@ class PackedRNN(nn.Module):
         return y_pred
 
     def predict(self, batch):
-        x_in, lengths = batch
         self.eval()
-        y_pred = self.forward(x_in, lengths)
+        y_pred = self.forward(batch)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
             out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long)  
@@ -260,9 +258,8 @@ class PackedLSTM(nn.Module):
         return self.fc(hidden)
 
     def predict_proba(self, batch):
-        x_in, lengths = batch
         self.eval()
-        y_pred = self.forward(x_in, lengths)
+        y_pred = self.forward(batch)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
         else:
@@ -270,9 +267,8 @@ class PackedLSTM(nn.Module):
         return y_pred
 
     def predict(self, batch):
-        x_in, lengths = batch
         self.eval()
-        y_pred = self.forward(x_in, lengths)
+        y_pred = self.forward(batch)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
             out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long)  
