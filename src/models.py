@@ -6,11 +6,13 @@ import torch.nn.functional as F
 class RNN(nn.Module):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
                  num_layers, pretrained_embeddings, bidirectional,
-                 dropout_p=0., padding_idx=0, nonlinearity='tanh'):
+                 dropout_p=0., padding_idx=0, nonlinearity='tanh',
+                 device='cuda' if torch.cuda.is_available() else 'cpu'):
         
         super().__init__()
         self.output_dim = output_dim
         self.bidirectional = bidirectional
+        self.device = device
 
         self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
                                                       padding_idx=padding_idx)
@@ -60,7 +62,7 @@ class RNN(nn.Module):
         y_pred = self.forward(x_in)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long)  
+            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long, device=self.device)  
         else:
             y_pred = F.softmax(y_pred, dim=1)
             out = torch.argmax(y_pred, dim=1)
@@ -70,11 +72,13 @@ class RNN(nn.Module):
 class LSTM(nn.Module):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
                  num_layers, pretrained_embeddings, bidirectional,
-                 dropout_p=0., padding_idx=0):
+                 dropout_p=0., padding_idx=0,
+                 device='cuda' if torch.cuda.is_available() else 'cpu'):
         
         super().__init__()
         self.output_dim = output_dim
         self.bidirectional = bidirectional
+        self.device = device
 
         self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
                                                       padding_idx=padding_idx)
@@ -127,7 +131,7 @@ class LSTM(nn.Module):
         y_pred = self.forward(x_in)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long)  
+            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long, device=self.device)  
         else:
             y_pred = F.softmax(y_pred, dim=1)
             out = torch.argmax(y_pred, dim=1)
@@ -137,11 +141,13 @@ class LSTM(nn.Module):
 class PackedRNN(nn.Module):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
                  num_layers, pretrained_embeddings, bidirectional,
-                 dropout_p=0., padding_idx=0, nonlinearity='tanh'):
+                 dropout_p=0., padding_idx=0, nonlinearity='tanh',
+                 device='cuda' if torch.cuda.is_available() else 'cpu'):
         
         super().__init__()
         self.output_dim = output_dim
         self.bidirectional = bidirectional
+        self.device = device
 
         self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
                                                       padding_idx=padding_idx)
@@ -198,7 +204,7 @@ class PackedRNN(nn.Module):
         y_pred = self.forward(batch)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long)  
+            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long, device=self.device)  
         else:
             y_pred = F.softmax(y_pred, dim=1)
             out = torch.argmax(y_pred, dim=1)
@@ -208,11 +214,13 @@ class PackedRNN(nn.Module):
 class PackedLSTM(nn.Module):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
                  num_layers, pretrained_embeddings, bidirectional,
-                 dropout_p=0., padding_idx=0):
+                 dropout_p=0., padding_idx=0,
+                 device='cuda' if torch.cuda.is_available() else 'cpu'):
         
         super().__init__()
         self.output_dim = output_dim
         self.bidirectional = bidirectional
+        self.device = device
 
         self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
                                                       padding_idx=padding_idx)
@@ -271,7 +279,7 @@ class PackedLSTM(nn.Module):
         y_pred = self.forward(batch)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long)  
+            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long, device=self.device)  
         else:
             y_pred = F.softmax(y_pred, dim=1)
             out = torch.argmax(y_pred, dim=1)
