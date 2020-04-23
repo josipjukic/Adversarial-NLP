@@ -39,7 +39,8 @@ def save_dataset(dataset, path):
         id = save_data(dataset[mode], filepath, nlp, id)
 
 
-def load_dataset(path, include_lengths=True, lower=False, stop_words=None):
+def load_dataset(path, include_lengths=True, lower=False, stop_words=None,
+                 load_raw=True, load_id=True):
     TEXT = data.Field(include_lengths=include_lengths,
                       lower=lower,
                       stop_words=stop_words)
@@ -48,9 +49,13 @@ def load_dataset(path, include_lengths=True, lower=False, stop_words=None):
     ID = data.RawField()
 
     fields = {'text': ('text', TEXT),
-              'label': ('label', LABEL),
-              'raw': ('raw', RAW),
-              'id': ('id', ID)}
+              'label': ('label', LABEL)}
+
+    if load_raw:
+        fields['raw'] = ('raw', RAW)
+
+    if load_id:
+        fields['id'] = ('id', ID)
 
     splits = data.TabularDataset.splits(
                                 path=path,
