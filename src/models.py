@@ -1,9 +1,33 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from abc import ABC
 
 
-class RNN(nn.Module):
+class AbstractModel(ABC):
+    def predict_proba(self, batch):
+        self.eval()
+        y_pred = self.forward(batch)
+        if self.output_dim == 1:
+            y_pred = torch.sigmoid(y_pred)
+            y_pred = torch.cat([1.-y_pred, y_pred], dim=1)
+        else:
+            y_pred = F.softmax(y_pred, dim=1)
+        return y_pred
+
+    def predict(self, batch):
+        self.eval()
+        y_pred = self.forward(batch)
+        if self.output_dim == 1:
+            y_pred = torch.sigmoid(y_pred)
+            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long, device=self.device)  
+        else:
+            y_pred = F.softmax(y_pred, dim=1)
+            out = torch.argmax(y_pred, dim=1)
+        return out
+
+
+class RNN(nn.Module, AbstractModel):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
                  num_layers, pretrained_embeddings, bidirectional,
                  dropout_p=0., padding_idx=0, nonlinearity='tanh',
@@ -48,28 +72,8 @@ class RNN(nn.Module):
         hidden = self.dropout(hidden)
         return self.fc(hidden)
 
-    def predict_proba(self, x_in):
-        self.eval()
-        y_pred = self.forward(x_in)
-        if self.output_dim == 1:
-            y_pred = torch.sigmoid(y_pred)
-        else:
-            y_pred = F.softmax
-        return y_pred
 
-    def predict(self, x_in):
-        self.eval()
-        y_pred = self.forward(x_in)
-        if self.output_dim == 1:
-            y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long, device=self.device)  
-        else:
-            y_pred = F.softmax(y_pred, dim=1)
-            out = torch.argmax(y_pred, dim=1)
-        return out
-        
-
-class LSTM(nn.Module):
+class LSTM(nn.Module, AbstractModel):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
                  num_layers, pretrained_embeddings, bidirectional,
                  dropout_p=0., padding_idx=0,
@@ -117,28 +121,8 @@ class LSTM(nn.Module):
         hidden = self.dropout(hidden)
         return self.fc(hidden)
 
-    def predict_proba(self, x_in):
-        self.eval()
-        y_pred = self.forward(x_in)
-        if self.output_dim == 1:
-            y_pred = torch.sigmoid(y_pred)
-        else:
-            y_pred = F.softmax
-        return y_pred
 
-    def predict(self, x_in):
-        self.eval()
-        y_pred = self.forward(x_in)
-        if self.output_dim == 1:
-            y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long, device=self.device)  
-        else:
-            y_pred = F.softmax(y_pred, dim=1)
-            out = torch.argmax(y_pred, dim=1)
-        return out
-
-
-class PackedRNN(nn.Module):
+class PackedRNN(nn.Module, AbstractModel):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
                  num_layers, pretrained_embeddings, bidirectional,
                  dropout_p=0., padding_idx=0, nonlinearity='tanh',
@@ -190,28 +174,8 @@ class PackedRNN(nn.Module):
         hidden = self.dropout(hidden)
         return self.fc(hidden)
 
-    def predict_proba(self, batch):
-        self.eval()
-        y_pred = self.forward(batch)
-        if self.output_dim == 1:
-            y_pred = torch.sigmoid(y_pred)
-        else:
-            y_pred = F.softmax
-        return y_pred
 
-    def predict(self, batch):
-        self.eval()
-        y_pred = self.forward(batch)
-        if self.output_dim == 1:
-            y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long, device=self.device)  
-        else:
-            y_pred = F.softmax(y_pred, dim=1)
-            out = torch.argmax(y_pred, dim=1)
-        return out
-
-
-class PackedLSTM(nn.Module):
+class PackedLSTM(nn.Module, AbstractModel):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
                  num_layers, pretrained_embeddings, bidirectional,
                  dropout_p=0., padding_idx=0,
@@ -264,23 +228,3 @@ class PackedLSTM(nn.Module):
         
         hidden = self.dropout(hidden)
         return self.fc(hidden)
-
-    def predict_proba(self, batch):
-        self.eval()
-        y_pred = self.forward(batch)
-        if self.output_dim == 1:
-            y_pred = torch.sigmoid(y_pred)
-        else:
-            y_pred = F.softmax
-        return y_pred
-
-    def predict(self, batch):
-        self.eval()
-        y_pred = self.forward(batch)
-        if self.output_dim == 1:
-            y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long, device=self.device)  
-        else:
-            y_pred = F.softmax(y_pred, dim=1)
-            out = torch.argmax(y_pred, dim=1)
-        return out
