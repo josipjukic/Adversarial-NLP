@@ -74,11 +74,15 @@ def load_dataset(path, include_lengths=True, lower=False, stop_words=None,
 
 def load_dataset_for_transformer(path, tokenizer, lower=False,
                                  stop_words=None, load_raw=True,
-                                 load_id=True):
-    pad_index = tokenizer.convert_tokens_to_ids(tokenizer.pad_token)
+                                 load_id=True, max_len=512):
+    
+    tokenize = lambda x: tokenizer.convert_tokens_to_ids(
+                            tokenizer.tokenize(x)[:max_len]
+                         )
+
     TEXT = data.Field(use_vocab=False,
-                      tokenize=tokenizer.encode,
-                      pad_token=pad_index,
+                      tokenize=tokenize,
+                      pad_token=tokenizer.pad_token_id,
                       lower=lower,
                       stop_words=stop_words)
     LABEL = data.LabelField(dtype=torch.float)
