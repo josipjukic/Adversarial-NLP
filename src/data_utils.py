@@ -14,10 +14,10 @@ from torch.utils.data import (Dataset, DataLoader)
 from torchtext import data
 
 
-def save_data(data, filepath, nlp, id, save_raw, save_id):
+def save_data(data, filepath, tokenize, id, save_raw, save_id):
     entries = []
     for example in data.examples:
-        entry = dict(text=[token.text for token in nlp(example.text)],
+        entry = dict(text=tokenize(example.text),
                      label=example.label)
         if save_raw:
             entry['raw'] = example.text
@@ -33,12 +33,14 @@ def save_data(data, filepath, nlp, id, save_raw, save_id):
     return id
 
 
-def save_dataset(dataset, path, save_raw=True, save_id=True):
-    nlp = spacy.load('en', disable=['parser', 'tagger', 'ner', 'textcat'])
+def save_dataset(dataset, path, tokenize=None, save_raw=True, save_id=True):
+    if not tokenize:
+        nlp = spacy.load('en', disable=['parser', 'tagger', 'ner', 'textcat'])
+        tokenize = lambda x: [token.text for token in nlp(x)]
     id = 0
     for mode in ['train', 'test', 'valid']:
         filepath = os.path.join(path, f'{mode}.json')
-        id = save_data(dataset[mode], filepath, nlp, id, save_raw, save_id)
+        id = save_data(dataset[mode], filepath, tokenize, id, save_raw, save_id)
 
 
 def load_dataset(path, include_lengths=True, lower=False, stop_words=None,
