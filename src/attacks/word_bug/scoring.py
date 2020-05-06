@@ -51,8 +51,8 @@ def grad_unconstrained(model, inputs, pred, classes):
     score = embd.grad.norm(2, dim=2)
     return score
 
-
-def word_target(model, inputs, lengths, y_preds, num_classes, device):
+def word_target(model, batch, y_preds, num_classes, device):
+    inputs = batch[0]
     losses = torch.zeros(inputs.shape)
     target = None
     for i in range(inputs.shape[0]):
@@ -62,9 +62,7 @@ def word_target(model, inputs, lengths, y_preds, num_classes, device):
         target = (i, torch.clone(inputs[i,:]))
         inputs[i,:] = 0
         with torch.no_grad():
-            out = model.predict_proba(inputs, lengths)
-            if num_classes == 2:
-                out = torch.cat([1.-out, out], dim=1).to(device)
+            out = model.predict_proba(batch)
             losses[i,:] = out.gather(1, y_preds).squeeze()
     
     if target:
@@ -73,16 +71,15 @@ def word_target(model, inputs, lengths, y_preds, num_classes, device):
     return 1.-losses
 
 
-def temporal(model, inputs, lengths, y_preds, num_classes, device):
+def temporal(model, batch, y_preds, num_classes, device):
+    inputs, lengths = batch
     new_preds = torch.zeros(inputs.shape)
     losses = torch.zeros(inputs.shape)
     for i in range(inputs.shape[0]):
         preinputs = inputs[:i+1,:]
         with torch.no_grad():
             new_lengths = torch.min(lengths, torch.tensor(i+1).to(device))
-            preout = model.predict_proba(preinputs, new_lengths)
-            if num_classes == 2:
-                preout = torch.cat([1.-preout, preout], dim=1).to(device)
+            preout = model.predict_proba((preinputs, new_lengths))
             new_preds[i,:] = preout.gather(1, y_preds).squeeze()
             
     losses[0,:] = new_preds[0,:] - 1.0/num_classes
@@ -92,16 +89,15 @@ def temporal(model, inputs, lengths, y_preds, num_classes, device):
     return losses
 
 
-def temporal_tail(model, inputs, lengths, y_preds, num_classes, device):
+def temporal_tail(model, batch, y_preds, num_classes, device):
+    inputs, lengths = batch
     new_preds = torch.zeros(inputs.shape)
     losses = torch.zeros(inputs.shape)
     for i in range(inputs.shape[0]):
         postinputs = inputs[i:,:]
         with torch.no_grad():
             new_lengths = torch.max(lengths-i, torch.tensor(1).to(device))
-            postout = model.predict_proba(postinputs, new_lengths)
-            if num_classes == 2:
-                postout = torch.cat([1.-postout, postout], dim=1).to(device)
+            postout = model.predict_proba((postinputs, new_lengths))
             new_preds[i,:] = postout.gather(1, y_preds).squeeze()
             
     losses[-1,:] = new_preds[-1,:] - 1.0/num_classes
@@ -111,9 +107,9 @@ def temporal_tail(model, inputs, lengths, y_preds, num_classes, device):
     return losses
 
 
-def combined_temporal(model, inputs, lengths, y_preds, num_classes, device, alpha=1.):
-    temporal_score = temporal(model, x_in, lengths, y_preds, num_classes, device)
-    temporal_tail_score = temporal_tail(model, x_in, lengths, y_preds, num_classes, device)
+def combined_temporal(model, batch, y_preds, num_classes, device, alpha=1.):
+    temporal_score = temporal(model, batch, y_preds, num_classes, device)
+    temporal_tail_score = temporal_tail(model, batch, y_preds, num_classes, device)
     return temporal_score + alpha*temporal_tail_score
 
 

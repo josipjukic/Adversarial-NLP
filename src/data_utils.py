@@ -74,6 +74,27 @@ def spacy_revtok(nlp, tokens):
     return ''.join(token.text_with_ws for token in tokens)
 
 
+def indexing_adversarial_text(raw, nlp, indices, transform):
+    adv_words = [token.text_with_ws for token in nlp(raw)]
+    for i in indices:
+        if i >= len(adv_words): continue
+        adv_words[i] = transform(adv_words[i])
+    return ''.join(adv_words)
+
+
+def replacing_adversarial_text(raw, nlp, new_text, vocab):
+    tokens = nlp(raw)
+    new_words = []
+    for i, idx in enumerate(new_text):
+        new_words.append(vocab.itos[idx] + tokens[i].whitespace_)
+    return ''.join(new_words)
+
+
+def reconstruct(tensor, vocab):
+    words = [vocab.itos[idx] for idx in tensor]
+    return ' '.join(words)
+
+
 def handle_dirs(dirpath):
     if not os.path.exists(dirpath):
         os.makedirs(dirpath)
