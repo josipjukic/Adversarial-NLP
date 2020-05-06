@@ -228,3 +228,20 @@ class PackedLSTM(nn.Module, AbstractModel):
         
         hidden = self.dropout(hidden)
         return self.fc(hidden)
+
+
+class BertClassifier(nn.Module, AbstractModel):
+    def __init__(self, output_dim, bert_model_name='bert-base-uncased'):
+        super().__init__()
+        self.output_dim = output_dim
+        self.bert = BertModel.from_pretrained(bert_model_name)
+        config = self.bert.config
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.fc = nn.Linear(config.hidden_size, output_dim)
+        nn.init.xavier_normal_(self.fc.weight)
+
+    def forward(self, x_in):
+        _, pooled_output = self.bert(x_in)
+        pooled_output = self.dropout(pooled_output)
+        logits = self.classifier(pooled_output)
+        return logits
