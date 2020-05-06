@@ -70,6 +70,39 @@ def load_dataset(path, include_lengths=True, lower=False, stop_words=None,
     return splits, (TEXT, LABEL, RAW, ID)
 
 
+def load_dataset_for_transformer(path, tokenizer, lower=False,
+                                 stop_words=None, load_raw=True,
+                                 load_id=True):
+    pad_index = tokenizer.convert_tokens_to_ids(tokenizer.pad_token)
+    TEXT = data.Field(use_vocab=False,
+                      tokenize=tokenizer.encode,
+                      pad_token=pad_index,
+                      lower=lower,
+                      stop_words=stop_words)
+    LABEL = data.LabelField(dtype=torch.float)
+    RAW = data.RawField()
+    ID = data.RawField()
+
+    fields = {'text': ('text', TEXT),
+              'label': ('label', LABEL)}
+
+    if load_raw:
+        fields['raw'] = ('raw', RAW)
+
+    if load_id:
+        fields['id'] = ('id', ID)
+
+    splits = data.TabularDataset.splits(
+                                path=path,
+                                train='train.json',
+                                validation='valid.json',
+                                test='test.json',
+                                format='json',
+                                fields=fields)
+
+    return splits, (TEXT, LABEL, RAW, ID)
+
+
 def spacy_revtok(nlp, tokens):
     return ''.join(token.text_with_ws for token in tokens)
 
