@@ -94,7 +94,7 @@ class RNN(nn.Module, AbstractModel):
                                                       padding_idx=padding_idx)
 
         drop_prob = 0. if num_layers > 1 else dropout_p
-        assert rnn_type in RNN_TYPES, f'Use one of the following: {str(RNNS)}'
+        assert rnn_type in RNN_TYPES, f'Use one of the following: {str(RNN_TYPES)}'
         RnnCell = getattr(nn, rnn_type)
         self.rnn = RnnCell(embedding_dim,
                            hidden_dim,
@@ -231,7 +231,7 @@ class RNN_NLI(nn.Module, AbstractModel):
         self.dropout = nn.Dropout(dropout_p)
 
         drop_prob = 0. if num_layers > 1 else dropout_p
-        assert rnn_type in RNN_TYPES, f'Use one of the following: {str(RNNS)}'
+        assert rnn_type in RNN_TYPES, f'Use one of the following: {str(RNN_TYPES)}'
         RnnCell = getattr(nn, rnn_type)
         self.rnn = RnnCell(embedding_dim,
                            hidden_dim,
