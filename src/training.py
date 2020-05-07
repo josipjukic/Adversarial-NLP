@@ -153,9 +153,9 @@ def evaluate(model, iterator, criterion, train_state=None, mode='valid', tqdms=N
     with torch.no_grad():
     
         for batch_index, batch in enumerate(iterator, 1):
-            y_pred = model(batch).squeeze()
+            y_pred = model(batch)
 
-            loss = criterion(y_pred, batch.label)
+            loss = criterion(y_pred.squeeze(), batch.label)
             loss_t = loss.item()
             running_loss += (loss_t - running_loss) / batch_index
             
