@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import BertModel
 
+RNN_TYPES = ['LSTM', 'GRU']
 
 class AbstractModel(ABC):
     def predict_proba(self, batch):
@@ -28,102 +29,7 @@ class AbstractModel(ABC):
         return out
 
 
-class RNN(nn.Module, AbstractModel):
-    def __init__(self, embedding_dim, hidden_dim, output_dim,
-                 num_layers, pretrained_embeddings, bidirectional,
-                 dropout_p=0., padding_idx=0, nonlinearity='tanh',
-                 device='cuda' if torch.cuda.is_available() else 'cpu'):
-        
-        super().__init__()
-        self.output_dim = output_dim
-        self.bidirectional = bidirectional
-        self.device = device
-
-        self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
-                                                      padding_idx=padding_idx)
-
-        drop_prob = 0. if num_layers > 1 else dropout_p
-        self.rnn = nn.RNN(embedding_dim, hidden_dim, num_layers=num_layers,
-                          bidirectional=bidirectional, nonlinearity=nonlinearity,
-                          dropout=drop_prob)
-
-        self.dropout = nn.Dropout(dropout_p)
-
-        self.fc = nn.Linear(hidden_dim * 2, output_dim)
-        
-    def forward(self, x_in):
-        # x_in: S x B
-        # embedded: S x B x E
-        embedded = self.dropout(self.embedding(x_in))
-
-        # out: S x B x (H*num_directions)
-        # hidden: (L*num_directions) x B x H
-        # cell: (L*num_directions) x B x H
-        out, (hidden, cell) = self.rnn(embedded)
-
-        # if bidirectional concat the final forward (hidden[-2,:,:]) and
-        # backward (hidden[-1,:,:]) hidden layers, otherwise extract the
-        # final hidden state and apply dropout
-        # hidden = B x (H*num_directions)
-        if self.bidirectional:
-            hidden = torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim=1)
-        else:
-            hidden = hidden[-1,:,:]
-        
-        hidden = self.dropout(hidden)
-        return self.fc(hidden)
-
-
-class LSTM(nn.Module, AbstractModel):
-    def __init__(self, embedding_dim, hidden_dim, output_dim,
-                 num_layers, pretrained_embeddings, bidirectional,
-                 dropout_p=0., padding_idx=0,
-                 device='cuda' if torch.cuda.is_available() else 'cpu'):
-        
-        super().__init__()
-        self.output_dim = output_dim
-        self.bidirectional = bidirectional
-        self.device = device
-
-        self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
-                                                      padding_idx=padding_idx)
-        
-        drop_prob = 0. if num_layers > 1 else dropout_p
-        self.lstm = nn.LSTM(embedding_dim, 
-                            hidden_dim, 
-                            num_layers=num_layers, 
-                            bidirectional=bidirectional, 
-                            dropout=drop_prob)
-
-        self.dropout = nn.Dropout(dropout_p)
-
-        self.fc = nn.Linear(hidden_dim * 2, output_dim)
-        
-    def forward(self, x_in):
-        # x_in: S x B
-        # embedded: S x B x E
-        embedded = self.dropout(self.embedding(x_in))
-        
-        # out: S x B x (H*num_directions)
-        # hidden: (L*num_directions) x B x H
-        # cell: (L*num_directions) x B x H
-        out_out, (hidden, cell) = self.lstm(embedded)
-        
-
-        # if bidirectional concat the final forward (hidden[-2,:,:]) and
-        # backward (hidden[-1,:,:]) hidden layers, otherwise extract the
-        # final hidden state and apply dropout
-        # hidden = B x (H*num_directions)
-        if self.bidirectional:
-            hidden = torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim=1)
-        else:
-            hidden = hidden[-1,:,:]
-        
-        hidden = self.dropout(hidden)
-        return self.fc(hidden)
-
-
-class PackedRNN(nn.Module, AbstractModel):
+class PlainRNN(nn.Module, AbstractModel):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
                  num_layers, pretrained_embeddings, bidirectional,
                  dropout_p=0., padding_idx=0, nonlinearity='tanh',
@@ -147,8 +53,87 @@ class PackedRNN(nn.Module, AbstractModel):
         self.fc = nn.Linear(hidden_dim * 2, output_dim)
         
     def forward(self, batch):
-        x_in, lengths = batch
         # x_in: S x B
+        x_in = batch.text
+        
+        # embedded: S x B x E
+        embedded = self.dropout(self.embedding(x_in))
+
+        # out: S x B x (H*num_directions)
+        # hidden: (L*num_directions) x B x H
+        # cell: (L*num_directions) x B x H
+        out, (hidden, cell) = self.rnn(embedded)
+
+        # if bidirectional concat the final forward (hidden[-2,:,:]) and
+        # backward (hidden[-1,:,:]) hidden layers, otherwise extract the
+        # final hidden state and apply dropout
+        # hidden = B x (H*num_directions)
+        if self.bidirectional:
+            hidden = torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim=1)
+        else:
+            hidden = hidden[-1,:,:]
+        
+        hidden = self.dropout(hidden)
+        return self.fc(hidden)
+
+
+class RNN(nn.Module, AbstractModel):
+    def __init__(self, embedding_dim, hidden_dim, output_dim,
+                 num_layers, pretrained_embeddings, bidirectional,
+                 dropout_p=0., padding_idx=0, rnn_type='LSTM'
+                 device='cuda' if torch.cuda.is_available() else 'cpu'):
+        
+        super().__init__()
+        self.output_dim = output_dim
+        self.bidirectional = bidirectional
+        self.device = device
+
+        self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
+                                                      padding_idx=padding_idx)
+        
+        drop_prob = 0. if num_layers > 1 else dropout_p
+        assert rnn_type in RNN_TYPES, f'Use one of the following: {str(RNNS)}'
+        RnnCell = getattr(nn, rnn_type)
+        self.rnn = RnnCell(embedding_dim, 
+                           hidden_dim, 
+                           num_layers=num_layers, 
+                           bidirectional=bidirectional, 
+                           dropout=drop_prob)
+
+        self.dropout = nn.Dropout(dropout_p)
+        self.fc = nn.Linear(hidden_dim * 2, output_dim)
+        
+    def forward(self, batch):
+        # x_in: S x B
+        x_in = batch.text
+
+        # embedded: S x B x E
+        embedded = self.dropout(self.embedding(x_in))
+        
+        # out: S x B x (H*num_directions)
+        # hidden: (L*num_directions) x B x H
+        # cell: (L*num_directions) x B x H
+        out_out, (hidden, cell) = self.rnn(embedded)
+        
+
+        # if bidirectional concat the final forward (hidden[-2,:,:]) and
+        # backward (hidden[-1,:,:]) hidden layers, otherwise extract the
+        # final hidden state and apply dropout
+        # hidden = B x (H*num_directions)
+        if self.bidirectional:
+            hidden = torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim=1)
+        else:
+            hidden = hidden[-1,:,:]
+        
+        hidden = self.dropout(hidden)
+        return self.fc(hidden)
+
+
+class PackedPlainRNN(PlainRNN):
+    def forward(self, batch):
+        # x_in: S x B
+        x_in, lengths = batch.text
+      
         # embedded: S x B x E
         embedded = self.dropout(self.embedding(x_in))
        
@@ -176,34 +161,11 @@ class PackedRNN(nn.Module, AbstractModel):
         return self.fc(hidden)
 
 
-class PackedLSTM(nn.Module, AbstractModel):
-    def __init__(self, embedding_dim, hidden_dim, output_dim,
-                 num_layers, pretrained_embeddings, bidirectional,
-                 dropout_p=0., padding_idx=0,
-                 device='cuda' if torch.cuda.is_available() else 'cpu'):
-        
-        super().__init__()
-        self.output_dim = output_dim
-        self.bidirectional = bidirectional
-        self.device = device
-
-        self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
-                                                      padding_idx=padding_idx)
-        
-        drop_prob = 0. if num_layers > 1 else dropout_p
-        self.lstm = nn.LSTM(embedding_dim, 
-                            hidden_dim, 
-                            num_layers=num_layers, 
-                            bidirectional=bidirectional, 
-                            dropout=drop_prob)
-
-        self.dropout = nn.Dropout(dropout_p)
-
-        self.fc = nn.Linear(hidden_dim * 2, output_dim)
-        
+class PackedRNN(RNN):
     def forward(self, batch):
-        x_in, lengths = batch
         # x_in: S x B
+        x_in, lengths = batch.text
+
         # embedded: S x B x E
         embedded = self.dropout(self.embedding(x_in))
         
@@ -212,7 +174,7 @@ class PackedLSTM(nn.Module, AbstractModel):
         # hidden: (L*num_directions) x B x H
         # cell: (L*num_directions) x B x H
         packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, lengths)
-        packed_out, (hidden, cell) = self.lstm(packed_embedded)
+        packed_out, (hidden, cell) = self.rnn(packed_embedded)
         
         # unpack sequence
         # out: S x B x (H*num_directions)
@@ -241,8 +203,59 @@ class BertClassifier(nn.Module, AbstractModel):
         self.fc = nn.Linear(config.hidden_size, output_dim)
         nn.init.xavier_normal_(self.fc.weight)
 
-    def forward(self, x_in):
+    def forward(self, batch):
+        x_in = batch.text
         _, pooled_output = self.bert(x_in.permute(1,0))
         pooled_output = self.dropout(pooled_output)
         logits = self.fc(pooled_output)
         return logits
+
+
+class RNN_NLI(nn.Module, AbstractModel):
+    def __init__(self, embedding_dim, hidden_dim, output_dim,
+                 num_layers, pretrained_embeddings, bidirectional,
+                 dropout_p=0., padding_idx=0, rnn_type='LSTM',
+                 num_out_layers=4,
+                 device='cuda' if torch.cuda.is_available() else 'cpu'):
+
+        super().__init__()
+        self.output_dim = output_dim
+        self.bidirectional = bidirectional
+        self.device = device
+
+        self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
+                                                      padding_idx=padding_idx)
+
+        self.projection = nn.Linear(embedding_dim, embedding_dim)
+        self.dropout = nn.Dropout(dropout_p)
+        
+        drop_prob = 0. if num_layers > 1 else dropout_p
+        assert rnn_type in RNN_TYPES, f'Use one of the following: {str(RNNS)}'
+        RnnCell = getattr(nn, rnn_type)
+        self.rnn = RnnCell(embedding_dim, 
+                           hidden_dim, 
+                           num_layers=num_layers, 
+                           bidirectional=bidirectional, 
+                           dropout=drop_prob)
+        
+        self.relu = nn.ReLU()
+
+        out_layers = []
+        for _ in range(num_out_layers-1):
+            out_layers.append(nn.Linear(hidden_dim, hidden_dim))
+            out_layers.append(self.relu)
+            out_layers.append(self.droput)
+        out_layers.append(nn.Linear(hidden_dim, output_dim))
+        self.out = nn.Sequential(*out_layers)
+
+	def forward(self, batch):
+		premise_embed = self.embedding(batch.premise)
+		hypothesis_embed = self.embedding(batch.hypothesis)
+		premise_proj = self.relu(self.projection(premise_embed))
+		hypothesis_proj = self.relu(self.projection(hypothesis_embed))
+		encoded_premise, _ = self.lstm(premise_proj)
+		encoded_hypothesis, _ = self.lstm(hypothesis_proj)
+		premise = encoded_premise.sum(dim=1)
+		hypothesis = encoded_hypothesis.sum(dim=1)
+		combined = torch.cat((premise, hypothesis), 1)
+		return self.out(combined)
