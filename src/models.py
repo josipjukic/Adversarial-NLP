@@ -6,6 +6,7 @@ from transformers import BertModel
 
 RNN_TYPES = ['LSTM', 'GRU']
 
+
 class AbstractModel(ABC):
     def predict_proba(self, batch):
         self.eval()
@@ -22,7 +23,8 @@ class AbstractModel(ABC):
         y_pred = self.forward(batch)
         if self.output_dim == 1:
             y_pred = torch.sigmoid(y_pred)
-            out = torch.as_tensor((y_pred - 0.5) > 0, dtype=torch.long, device=self.device)  
+            out = torch.as_tensor((y_pred - 0.5) > 0,
+                                  dtype=torch.long, device=self.device)
         else:
             y_pred = F.softmax(y_pred, dim=1)
             out = torch.argmax(y_pred, dim=1)
@@ -34,7 +36,7 @@ class PlainRNN(nn.Module, AbstractModel):
                  num_layers, pretrained_embeddings, bidirectional,
                  dropout_p=0., padding_idx=0, nonlinearity='tanh',
                  device='cuda' if torch.cuda.is_available() else 'cpu'):
-        
+
         super().__init__()
         self.output_dim = output_dim
         self.bidirectional = bidirectional
@@ -51,11 +53,11 @@ class PlainRNN(nn.Module, AbstractModel):
         self.dropout = nn.Dropout(dropout_p)
 
         self.fc = nn.Linear(hidden_dim * 2, output_dim)
-        
+
     def forward(self, batch):
         # x_in: S x B
         x_in = batch.text
-        
+
         # embedded: S x B x E
         embedded = self.dropout(self.embedding(x_in))
 
@@ -69,10 +71,10 @@ class PlainRNN(nn.Module, AbstractModel):
         # final hidden state and apply dropout
         # hidden = B x (H*num_directions)
         if self.bidirectional:
-            hidden = torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim=1)
+            hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
         else:
-            hidden = hidden[-1,:,:]
-        
+            hidden = hidden[-1, :, :]
+
         hidden = self.dropout(hidden)
         return self.fc(hidden)
 
@@ -82,7 +84,7 @@ class RNN(nn.Module, AbstractModel):
                  num_layers, pretrained_embeddings, bidirectional,
                  dropout_p=0., padding_idx=0, rnn_type='LSTM',
                  device='cuda' if torch.cuda.is_available() else 'cpu'):
-        
+
         super().__init__()
         self.output_dim = output_dim
         self.bidirectional = bidirectional
@@ -90,41 +92,40 @@ class RNN(nn.Module, AbstractModel):
 
         self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
                                                       padding_idx=padding_idx)
-        
+
         drop_prob = 0. if num_layers > 1 else dropout_p
         assert rnn_type in RNN_TYPES, f'Use one of the following: {str(RNNS)}'
         RnnCell = getattr(nn, rnn_type)
-        self.rnn = RnnCell(embedding_dim, 
-                           hidden_dim, 
-                           num_layers=num_layers, 
-                           bidirectional=bidirectional, 
+        self.rnn = RnnCell(embedding_dim,
+                           hidden_dim,
+                           num_layers=num_layers,
+                           bidirectional=bidirectional,
                            dropout=drop_prob)
 
         self.dropout = nn.Dropout(dropout_p)
         self.fc = nn.Linear(hidden_dim * 2, output_dim)
-        
+
     def forward(self, batch):
         # x_in: S x B
         x_in = batch.text
 
         # embedded: S x B x E
         embedded = self.dropout(self.embedding(x_in))
-        
+
         # out: S x B x (H*num_directions)
         # hidden: (L*num_directions) x B x H
         # cell: (L*num_directions) x B x H
         out_out, (hidden, cell) = self.rnn(embedded)
-        
 
         # if bidirectional concat the final forward (hidden[-2,:,:]) and
         # backward (hidden[-1,:,:]) hidden layers, otherwise extract the
         # final hidden state and apply dropout
         # hidden = B x (H*num_directions)
         if self.bidirectional:
-            hidden = torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim=1)
+            hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
         else:
-            hidden = hidden[-1,:,:]
-        
+            hidden = hidden[-1, :, :]
+
         hidden = self.dropout(hidden)
         return self.fc(hidden)
 
@@ -133,17 +134,17 @@ class PackedPlainRNN(PlainRNN):
     def forward(self, batch):
         # x_in: S x B
         x_in, lengths = batch.text
-      
+
         # embedded: S x B x E
         embedded = self.dropout(self.embedding(x_in))
-       
+
         # pack sequence
         # output over padding tokens are zero tensors
         # hidden: (L*num_directions) x B x H
         # cell: (L*num_directions) x B x H
         packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, lengths)
         packed_out, (hidden, cell) = self.rnn(packed_embedded)
-        
+
         # unpack sequence
         # out: S x B x (H*num_directions)
         out, out_lengths = nn.utils.rnn.pad_packed_sequence(packed_out)
@@ -153,10 +154,10 @@ class PackedPlainRNN(PlainRNN):
         # final hidden state and apply dropout
         # hidden = B x (H*num_directions)
         if self.bidirectional:
-            hidden = torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim=1)
+            hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
         else:
-            hidden = hidden[-1,:,:]
-        
+            hidden = hidden[-1, :, :]
+
         hidden = self.dropout(hidden)
         return self.fc(hidden)
 
@@ -168,14 +169,14 @@ class PackedRNN(RNN):
 
         # embedded: S x B x E
         embedded = self.dropout(self.embedding(x_in))
-        
+
         # pack sequence
         # output over padding tokens are zero tensors
         # hidden: (L*num_directions) x B x H
         # cell: (L*num_directions) x B x H
         packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, lengths)
         packed_out, (hidden, cell) = self.rnn(packed_embedded)
-        
+
         # unpack sequence
         # out: S x B x (H*num_directions)
         out, out_lengths = nn.utils.rnn.pad_packed_sequence(packed_out)
@@ -185,10 +186,10 @@ class PackedRNN(RNN):
         # final hidden state and apply dropout
         # hidden = B x (H*num_directions)
         if self.bidirectional:
-            hidden = torch.cat((hidden[-2,:,:], hidden[-1,:,:]), dim=1)
+            hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
         else:
-            hidden = hidden[-1,:,:]
-        
+            hidden = hidden[-1, :, :]
+
         hidden = self.dropout(hidden)
         return self.fc(hidden)
 
@@ -205,7 +206,7 @@ class BertClassifier(nn.Module, AbstractModel):
 
     def forward(self, batch):
         x_in = batch.text
-        _, pooled_output = self.bert(x_in.permute(1,0))
+        _, pooled_output = self.bert(x_in.permute(1, 0))
         pooled_output = self.dropout(pooled_output)
         logits = self.fc(pooled_output)
         return logits
@@ -228,16 +229,16 @@ class RNN_NLI(nn.Module, AbstractModel):
 
         self.projection = nn.Linear(embedding_dim, embedding_dim)
         self.dropout = nn.Dropout(dropout_p)
-        
+
         drop_prob = 0. if num_layers > 1 else dropout_p
         assert rnn_type in RNN_TYPES, f'Use one of the following: {str(RNNS)}'
         RnnCell = getattr(nn, rnn_type)
-        self.rnn = RnnCell(embedding_dim, 
-                           hidden_dim, 
-                           num_layers=num_layers, 
-                           bidirectional=bidirectional, 
+        self.rnn = RnnCell(embedding_dim,
+                           hidden_dim,
+                           num_layers=num_layers,
+                           bidirectional=bidirectional,
                            dropout=drop_prob)
-        
+
         self.relu = nn.ReLU()
 
         out_layers = []
@@ -248,14 +249,14 @@ class RNN_NLI(nn.Module, AbstractModel):
         out_layers.append(nn.Linear(hidden_dim, output_dim))
         self.out = nn.Sequential(*out_layers)
 
-	def forward(self, batch):
-		premise_embed = self.embedding(batch.premise)
-		hypothesis_embed = self.embedding(batch.hypothesis)
-		premise_proj = self.relu(self.projection(premise_embed))
-		hypothesis_proj = self.relu(self.projection(hypothesis_embed))
-		encoded_premise, _ = self.lstm(premise_proj)
-		encoded_hypothesis, _ = self.lstm(hypothesis_proj)
-		premise = encoded_premise.sum(dim=1)
-		hypothesis = encoded_hypothesis.sum(dim=1)
-		combined = torch.cat((premise, hypothesis), 1)
-		return self.out(combined)
+    def forward(self, batch):
+        premise_embed = self.embedding(batch.premise)
+        hypothesis_embed = self.embedding(batch.hypothesis)
+        premise_proj = self.relu(self.projection(premise_embed))
+        hypothesis_proj = self.relu(self.projection(hypothesis_embed))
+        encoded_premise, _ = self.lstm(premise_proj)
+        encoded_hypothesis, _ = self.lstm(hypothesis_proj)
+        premise = encoded_premise.sum(dim=1)
+        hypothesis = encoded_hypothesis.sum(dim=1)
+        combined = torch.cat((premise, hypothesis), 1)
+        return self.out(combined)
