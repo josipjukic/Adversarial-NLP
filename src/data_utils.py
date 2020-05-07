@@ -76,12 +76,11 @@ def load_dataset_for_transformer(path, tokenizer, lower=False,
                                  stop_words=None, load_raw=True,
                                  load_id=True, max_len=512):
     
-    tokenize = lambda x: tokenizer.convert_tokens_to_ids(
-                            tokenizer.tokenize(x)[:max_len]
-                         )
+    postpro = lambda xs, _: [tokenizer.convert_tokens_to_ids(x[:max_len])
+                             for x in xs]
 
     TEXT = data.Field(use_vocab=False,
-                      tokenize=tokenize,
+                      postprocessing=postpro,
                       pad_token=tokenizer.pad_token_id,
                       lower=lower,
                       stop_words=stop_words)
