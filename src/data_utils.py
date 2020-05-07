@@ -57,7 +57,8 @@ def save_nli_data(data, filepath, tokenize, id, save_raw, save_id):
 DATA_TYPES = {'classification': save_data, 'NLI': save_nli_data}
 
 
-def save_dataset(dataset, path, tokenize=None, save_raw=True, save_id=True):
+def save_dataset(dataset, path, tokenize=None, save_raw=True,
+                 save_id=True, data_type='classification'):
     if not tokenize:
         nlp = spacy.load('en', disable=['parser', 'tagger', 'ner', 'textcat'])
         tokenize = lambda x: [token.text for token in nlp(x)]
