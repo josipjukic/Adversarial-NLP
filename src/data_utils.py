@@ -74,7 +74,7 @@ def load_dataset(path, include_lengths=True, lower=False, stop_words=None,
     TEXT = data.Field(include_lengths=include_lengths,
                       lower=lower,
                       stop_words=stop_words)
-    LABEL = data.LabelField(dtype=torch.float)
+    LABEL = data.LabelField(dtype=torch.long)
     RAW = data.RawField()
     ID = data.RawField()
 
@@ -110,7 +110,7 @@ def load_dataset_for_transformer(path, tokenizer, lower=False,
                       pad_token=tokenizer.pad_token_id,
                       lower=lower,
                       stop_words=stop_words)
-    LABEL = data.LabelField(dtype=torch.float)
+    LABEL = data.LabelField(dtype=torch.long)
     RAW = data.RawField()
     ID = data.RawField()
 
@@ -138,7 +138,7 @@ def load_nli_dataset(path, lower=False, stop_words=None,
                      load_raw=True, load_id=True):
     TEXT = data.Field(lower=lower,
                       stop_words=stop_words)
-    LABEL = data.LabelField(dtype=torch.float)
+    LABEL = data.LabelField(dtype=torch.long)
     RAW = data.RawField()
     ID = data.RawField()
 

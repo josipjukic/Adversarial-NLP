@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from transformers import BertModel
 
-RNN_TYPES = ['LSTM', 'GRU']
+RNN_TYPES = ['RNN', 'LSTM', 'GRU']
 
 
 class AbstractModel(ABC):
@@ -82,7 +82,7 @@ class PlainRNN(nn.Module, AbstractModel):
 class RNN(nn.Module, AbstractModel):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
                  num_layers, pretrained_embeddings, bidirectional,
-                 dropout_p=0., padding_idx=0, rnn_type='LSTM',
+                 dropout_p=0., padding_idx=0, rnn_type='RNN',
                  device='cuda' if torch.cuda.is_available() else 'cpu'):
 
         super().__init__()
