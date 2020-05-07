@@ -14,6 +14,9 @@ from torch.utils.data import (Dataset, DataLoader)
 from torchtext import data
 
 
+DATA_TYPES = {'classification': save_data, 'NLI': save_nli_data}
+
+
 def save_data(data, filepath, tokenize, id, save_raw, save_id):
     entries = []
     for example in data.examples:
@@ -33,14 +36,36 @@ def save_data(data, filepath, tokenize, id, save_raw, save_id):
     return id
 
 
+def save_nli_data(data, filepath, tokenize, id, save_raw, save_id):
+    entries = []
+    for example in data.examples:
+        entry = dict(premise=tokenize(example.premise),
+                     hypothesis=tokenize(example.hypothesis),
+                     label=example.label)
+        if save_raw:
+            entry['raw_premise'] = example.premise
+            entry['raw_hypothesis'] = example.hypothesis
+        if save_id:
+            entry['id'] = id
+        entries.append(json.dumps(entry))
+        id += 1
+
+    json_dicts = '\n'.join(entries)
+    with open(filepath, 'w') as f:
+        f.write(json_dicts)
+    print(f'Saved data at {filepath}.')
+    return id
+
+
 def save_dataset(dataset, path, tokenize=None, save_raw=True, save_id=True):
     if not tokenize:
         nlp = spacy.load('en', disable=['parser', 'tagger', 'ner', 'textcat'])
         tokenize = lambda x: [token.text for token in nlp(x)]
     id = 0
+    save_fn = DATA_TYPES[data_type]
     for mode in ['train', 'test', 'valid']:
         filepath = os.path.join(path, f'{mode}.json')
-        id = save_data(dataset[mode], filepath, tokenize, id, save_raw, save_id)
+        id = save_fn(dataset[mode], filepath, tokenize, id, save_raw, save_id)
 
 
 def load_dataset(path, include_lengths=True, lower=False, stop_words=None,
@@ -106,6 +131,41 @@ def load_dataset_for_transformer(path, tokenizer, lower=False,
                                 fields=fields)
 
     return splits, (TEXT, LABEL, RAW, ID)
+
+
+def load_nli_dataset(path, lower=False, stop_words=None,
+                     load_raw=True, load_id=True):
+    PREMISE = data.Field(lower=lower,
+                         stop_words=stop_words)
+    HYPOTHESIS = data.Field(lower=lower,
+                            stop_words=stop_words)               
+    LABEL = data.LabelField(dtype=torch.float)
+    RAW_PREMISE = data.RawField()
+    RAW_HYPOTHESIS = data.RawField()
+    ID = data.RawField()
+
+    fields = {'text': ('text', TEXT),
+              'label': ('label', LABEL)}
+
+    if load_raw:
+        fields['raw_premise'] = ('raw_premise', RAW_PREMISE)
+        fields['raw_hypothesis'] = ('raw_hypothesis', RAW_HYPOTHESIS)
+
+    if load_id:
+        fields['id'] = ('id', ID)
+
+    splits = data.TabularDataset.splits(
+                                path=path,
+                                train='train.json',
+                                validation='valid.json',
+                                test='test.json',
+                                format='json',
+                                fields=fields)
+
+    return splits,
+           (TEXT, PREMISE, HYPOTHESIS, LABEL,
+            RAW_PREMISE, RAW_HYPOTHESIS, ID)
+
 
 
 def spacy_revtok(nlp, tokens):
