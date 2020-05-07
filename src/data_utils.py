@@ -143,7 +143,7 @@ def load_nli_dataset(path, lower=False, stop_words=None,
     ID = data.RawField()
 
     fields = {'premise': ('premise', TEXT),
-              'hypothesis': ('hypothesis', TEXT)
+              'hypothesis': ('hypothesis', TEXT),
               'label': ('label', LABEL)}
 
     if load_raw:
