@@ -162,9 +162,8 @@ def load_nli_dataset(path, lower=False, stop_words=None,
                                 format='json',
                                 fields=fields)
 
-    return splits,
-           (TEXT, PREMISE, HYPOTHESIS, LABEL,
-            RAW_PREMISE, RAW_HYPOTHESIS, ID)
+    return splits, (TEXT, PREMISE, HYPOTHESIS, LABEL,
+                    RAW_PREMISE, RAW_HYPOTHESIS, ID)
 
 
 
