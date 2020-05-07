@@ -14,9 +14,6 @@ from torch.utils.data import (Dataset, DataLoader)
 from torchtext import data
 
 
-DATA_TYPES = {'classification': save_data, 'NLI': save_nli_data}
-
-
 def save_data(data, filepath, tokenize, id, save_raw, save_id):
     entries = []
     for example in data.examples:
@@ -55,6 +52,9 @@ def save_nli_data(data, filepath, tokenize, id, save_raw, save_id):
         f.write(json_dicts)
     print(f'Saved data at {filepath}.')
     return id
+
+
+DATA_TYPES = {'classification': save_data, 'NLI': save_nli_data}
 
 
 def save_dataset(dataset, path, tokenize=None, save_raw=True, save_id=True):
