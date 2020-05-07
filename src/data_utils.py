@@ -70,11 +70,12 @@ def save_dataset(dataset, path, tokenize=None, save_raw=True,
 
 
 def load_dataset(path, include_lengths=True, lower=False, stop_words=None,
-                 load_raw=True, load_id=True):
+                 load_raw=True, load_id=True, binary_data=True):
     TEXT = data.Field(include_lengths=include_lengths,
                       lower=lower,
                       stop_words=stop_words)
-    LABEL = data.LabelField(dtype=torch.long)
+    label_type = torch.float if binary_data else torch.long
+    LABEL = data.LabelField(dtype=label_type)
     RAW = data.RawField()
     ID = data.RawField()
 
@@ -100,7 +101,8 @@ def load_dataset(path, include_lengths=True, lower=False, stop_words=None,
 
 def load_dataset_for_transformer(path, tokenizer, lower=False,
                                  stop_words=None, load_raw=True,
-                                 load_id=True, max_len=512):
+                                 load_id=True, binary_data=True,
+                                 max_len=512):
     
     postpro = lambda xs, _: [tokenizer.convert_tokens_to_ids(x[:max_len])
                              for x in xs]
@@ -110,7 +112,8 @@ def load_dataset_for_transformer(path, tokenizer, lower=False,
                       pad_token=tokenizer.pad_token_id,
                       lower=lower,
                       stop_words=stop_words)
-    LABEL = data.LabelField(dtype=torch.long)
+    label_type = torch.float if binary_data else torch.long
+    LABEL = data.LabelField(dtype=label_type)
     RAW = data.RawField()
     ID = data.RawField()
 
@@ -135,10 +138,12 @@ def load_dataset_for_transformer(path, tokenizer, lower=False,
 
 
 def load_nli_dataset(path, lower=False, stop_words=None,
-                     load_raw=True, load_id=True):
+                     load_raw=True, load_id=True,
+                     binary_data=False):
     TEXT = data.Field(lower=lower,
                       stop_words=stop_words)
-    LABEL = data.LabelField(dtype=torch.long)
+    label_type = torch.float if binary_data else torch.long
+    LABEL = data.LabelField(dtype=label_type)
     RAW = data.RawField()
     ID = data.RawField()
 
