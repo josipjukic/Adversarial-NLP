@@ -136,21 +136,19 @@ def load_dataset_for_transformer(path, tokenizer, lower=False,
 
 def load_nli_dataset(path, lower=False, stop_words=None,
                      load_raw=True, load_id=True):
-    PREMISE = data.Field(lower=lower,
-                         stop_words=stop_words)
-    HYPOTHESIS = data.Field(lower=lower,
-                            stop_words=stop_words)               
+    TEXT = data.Field(lower=lower,
+                      stop_words=stop_words)
     LABEL = data.LabelField(dtype=torch.float)
-    RAW_PREMISE = data.RawField()
-    RAW_HYPOTHESIS = data.RawField()
+    RAW = data.RawField()
     ID = data.RawField()
 
-    fields = {'text': ('text', TEXT),
+    fields = {'premise': ('premise', TEXT),
+              'hypothesis': ('hypothesis', TEXT)
               'label': ('label', LABEL)}
 
     if load_raw:
-        fields['raw_premise'] = ('raw_premise', RAW_PREMISE)
-        fields['raw_hypothesis'] = ('raw_hypothesis', RAW_HYPOTHESIS)
+        fields['raw_premise'] = ('raw_premise', RAW)
+        fields['raw_hypothesis'] = ('raw_hypothesis', RAW)
 
     if load_id:
         fields['id'] = ('id', ID)
@@ -163,8 +161,7 @@ def load_nli_dataset(path, lower=False, stop_words=None,
                                 format='json',
                                 fields=fields)
 
-    return splits, (TEXT, PREMISE, HYPOTHESIS, LABEL,
-                    RAW_PREMISE, RAW_HYPOTHESIS, ID)
+    return splits, (TEXT, LABEL, RAW, ID)
 
 
 
