@@ -1,7 +1,8 @@
+from abc import ABC
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from abc import ABC
+from transformers import BertModel
 
 
 class AbstractModel(ABC):
@@ -241,7 +242,7 @@ class BertClassifier(nn.Module, AbstractModel):
         nn.init.xavier_normal_(self.fc.weight)
 
     def forward(self, x_in):
-        _, pooled_output = self.bert(x_in)
+        _, pooled_output = self.bert(x_in.permute(1,0))
         pooled_output = self.dropout(pooled_output)
-        logits = self.classifier(pooled_output)
+        logits = self.fc(pooled_output)
         return logits
