@@ -80,10 +80,14 @@ def epoch_time(start_time, end_time):
     return elapsed_mins, elapsed_secs
 
 
-def binary_accuracy(y_pred, y_gold):
-    # round predictions to the closest integer
-    rounded_preds = torch.round(torch.sigmoid(y_pred))
-    correct = (rounded_preds == y_gold).float() # convert into float for division 
+def accuracy(y_pred, y_gold):
+    if y_pred.shape[1] == 1:
+        # binary
+        preds = torch.round(torch.sigmoid(y_pred)).squeeze()
+    else:
+        # multi-class
+        preds = torch.argmax(y_pred, dim=1)
+    correct = (preds == y_gold).float()
     acc = correct.sum() / len(correct)
     return acc.item()
 
@@ -106,10 +110,10 @@ def train(model, iterator, optimizer, criterion, train_state, tqdms=None):
         optimizer.zero_grad()
         
         # 2) compute the output
-        y_pred = model(batch).squeeze()
+        y_pred = model(batch)
 
         # 3) compute the loss
-        loss = criterion(y_pred, batch.label)
+        loss = criterion(y_pred.squeeze(), batch.label)
         loss_t = loss.item()
         running_loss += (loss_t - running_loss) / batch_index
         
@@ -121,7 +125,7 @@ def train(model, iterator, optimizer, criterion, train_state, tqdms=None):
         # -----------------------------------------
 
         # compute the accuracy
-        acc_t = binary_accuracy(y_pred, batch.label)
+        acc_t = accuracy(y_pred, batch.label)
         running_acc += (acc_t - running_acc) / batch_index
 
         if tqdms:
@@ -155,7 +159,7 @@ def evaluate(model, iterator, criterion, train_state=None, mode='valid', tqdms=N
             loss_t = loss.item()
             running_loss += (loss_t - running_loss) / batch_index
             
-            acc_t = binary_accuracy(y_pred, batch.label)
+            acc_t = accuracy(y_pred, batch.label)
             running_acc += (acc_t - running_acc) / batch_index
 
             if tqdms:
