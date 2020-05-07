@@ -242,11 +242,13 @@ class RNN_NLI(nn.Module, AbstractModel):
         self.relu = nn.ReLU()
 
         out_layers = []
+        lin_dim = hidden_dim*2
+        if bidirectional: lin_dim *= 2
         for _ in range(num_out_layers-1):
-            out_layers.append(nn.Linear(hidden_dim, hidden_dim))
+            out_layers.append(nn.Linear(lin_dim, lin_dim))
             out_layers.append(self.relu)
-            out_layers.append(self.droput)
-        out_layers.append(nn.Linear(hidden_dim, output_dim))
+            out_layers.append(self.dropout)
+        out_layers.append(nn.Linear(lin_dim, output_dim))
         self.out = nn.Sequential(*out_layers)
 
     def forward(self, batch):
@@ -254,8 +256,8 @@ class RNN_NLI(nn.Module, AbstractModel):
         hypothesis_embed = self.embedding(batch.hypothesis)
         premise_proj = self.relu(self.projection(premise_embed))
         hypothesis_proj = self.relu(self.projection(hypothesis_embed))
-        encoded_premise, _ = self.lstm(premise_proj)
-        encoded_hypothesis, _ = self.lstm(hypothesis_proj)
+        encoded_premise, _ = self.rnn(premise_proj)
+        encoded_hypothesis, _ = self.rnn(hypothesis_proj)
         premise = encoded_premise.sum(dim=1)
         hypothesis = encoded_hypothesis.sum(dim=1)
         combined = torch.cat((premise, hypothesis), 1)
