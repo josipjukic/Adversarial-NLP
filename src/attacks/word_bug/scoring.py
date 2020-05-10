@@ -10,17 +10,6 @@ import numpy as np
 import sys
 
 
-def replaceone(model, inputs, pred, classes):
-    losses = torch.zeros(inputs.size()[0], inputs.size()[1])
-    for i in range(inputs.size()[1]):
-        tempinputs = inputs.clone()
-        tempinputs[:, i] = 2
-        with torch.no_grad():
-            tempoutput = model(tempinputs)
-        losses[:, i] = F.nll_loss(tempoutput, pred, reduce=False)
-    return losses
-
-
 def grad(model, inputs, pred, classes):
     losses1 = torch.zeros(inputs.size()[0], inputs.size()[1])
     dloss = torch.zeros(inputs.size()[0], inputs.size()[1])
@@ -50,6 +39,7 @@ def grad_unconstrained(model, inputs, pred, classes):
     loss.backward()
     score = embd.grad.norm(2, dim=2)
     return score
+
 
 def word_target(model, batch, y_preds, num_classes, device):
     inputs = batch[0]
