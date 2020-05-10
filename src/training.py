@@ -190,7 +190,6 @@ def run_experiment(args, model, iterator, optimizer, criterion, tqdms):
         end_time = time.time()
 
         epoch_mins, epoch_secs = epoch_time(start_time, end_time)
-
         train_state = update_train_state(args=args, model=model,
                                          train_state=train_state)
         

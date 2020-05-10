@@ -10,7 +10,6 @@ import spacy
 import numpy as np
 import pandas as pd
 import torch
-from torch.utils.data import (Dataset, DataLoader)
 from torchtext import data
 
 
@@ -70,11 +69,11 @@ def save_dataset(dataset, path, tokenize=None, save_raw=True,
 
 
 def load_dataset(path, include_lengths=True, lower=False, stop_words=None,
-                 load_raw=True, load_id=True, binary_data=True):
+                 load_raw=False, load_id=False, float_label=True):
     TEXT = data.Field(include_lengths=include_lengths,
                       lower=lower,
                       stop_words=stop_words)
-    label_type = torch.float if binary_data else torch.long
+    label_type = torch.float if float_label else torch.long
     LABEL = data.LabelField(dtype=label_type)
     RAW = data.RawField()
     ID = data.RawField()
@@ -84,9 +83,11 @@ def load_dataset(path, include_lengths=True, lower=False, stop_words=None,
 
     if load_raw:
         fields['raw'] = ('raw', RAW)
+        RAW.is_target = True
 
     if load_id:
         fields['id'] = ('id', ID)
+        ID.is_target = True
 
     splits = data.TabularDataset.splits(
                                 path=path,
@@ -99,9 +100,31 @@ def load_dataset(path, include_lengths=True, lower=False, stop_words=None,
     return splits, (TEXT, LABEL, RAW, ID)
 
 
+def load_data(LOAD_PATH, include_lengths=True, lower=False,
+              stop_words=None, load_raw=True, load_id=True,
+              float_label=True, MAX_VOCAB_SIZE=25_000,
+              EMBEDDINGS_FILE='glove.6B.100d'):
+
+    splits, fields = load_dataset(LOAD_PATH,
+                                  include_lengths,
+                                  lower,
+                                  stop_words,
+                                  load_id,
+                                  load_raw,
+                                  float_label)
+    # TEXT
+    fields[0].build_vocab(splits[0], 
+                          max_size=MAX_VOCAB_SIZE, 
+                          vectors=EMBEDDINGS_FILE, 
+                          unk_init=torch.Tensor.normal_)
+    # LABEL
+    fields[1].build_vocab(splits[0])
+    return splits, fields
+
+
 def load_dataset_for_transformer(path, tokenizer, lower=False,
                                  stop_words=None, load_raw=True,
-                                 load_id=True, binary_data=True,
+                                 load_id=True, float_label=True,
                                  max_len=512):
     
     postpro = lambda xs, _: [tokenizer.convert_tokens_to_ids(x[:max_len])
@@ -112,7 +135,7 @@ def load_dataset_for_transformer(path, tokenizer, lower=False,
                       pad_token=tokenizer.pad_token_id,
                       lower=lower,
                       stop_words=stop_words)
-    label_type = torch.float if binary_data else torch.long
+    label_type = torch.float if float_label else torch.long
     LABEL = data.LabelField(dtype=label_type)
     RAW = data.RawField()
     ID = data.RawField()
@@ -122,9 +145,11 @@ def load_dataset_for_transformer(path, tokenizer, lower=False,
 
     if load_raw:
         fields['raw'] = ('raw', RAW)
+        RAW.is_target = True
 
     if load_id:
         fields['id'] = ('id', ID)
+        ID.is_target = True
 
     splits = data.TabularDataset.splits(
                                 path=path,
@@ -137,12 +162,30 @@ def load_dataset_for_transformer(path, tokenizer, lower=False,
     return splits, (TEXT, LABEL, RAW, ID)
 
 
+def load_data_for_transformer(LOAD_PATH, tokenizer, lower=False,
+                              stop_words=None, load_raw=True,
+                              load_id=True, float_label=True,
+                              max_len=512):
+
+    splits, fields = load_dataset_for_transformer(LOAD_PATH,
+                                                  tokenizer,
+                                                  lower,
+                                                  stop_words,
+                                                  load_id,
+                                                  load_raw,
+                                                  float_label,
+                                                  max_len)
+    # LABEL
+    fields[1].build_vocab(splits[0])
+    return splits, fields
+
+
 def load_nli_dataset(path, lower=False, stop_words=None,
                      load_raw=True, load_id=True,
-                     binary_data=False):
+                     float_label=False):
     TEXT = data.Field(lower=lower,
                       stop_words=stop_words)
-    label_type = torch.float if binary_data else torch.long
+    label_type = torch.float if float_label else torch.long
     LABEL = data.LabelField(dtype=label_type)
     RAW = data.RawField()
     ID = data.RawField()
@@ -269,16 +312,8 @@ def json_load(filepath):
         return json.load(f)
 
 
-def set_seed_everywhere(seed, cuda):
+def set_seed_everywhere(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
-    if cuda:
+    if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-
-
-# logging.basicConfig(level=logging.INFO,
-#                     format='%(levelname)-8s %(message)s',
-#                     filename=args.log_file)
-# logger = logging.getLogger()
-# logger.handlers = [logging.StreamHandler(
-#     sys.stderr), logging.FileHandler(args.log_file)]

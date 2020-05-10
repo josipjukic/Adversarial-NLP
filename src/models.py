@@ -31,54 +31,6 @@ class AbstractModel(ABC):
         return out
 
 
-class PlainRNN(nn.Module, AbstractModel):
-    def __init__(self, embedding_dim, hidden_dim, output_dim,
-                 num_layers, pretrained_embeddings, bidirectional,
-                 dropout_p=0., padding_idx=0, nonlinearity='tanh',
-                 device='cuda' if torch.cuda.is_available() else 'cpu'):
-
-        super().__init__()
-        self.output_dim = output_dim
-        self.bidirectional = bidirectional
-        self.device = device
-
-        self.embedding = nn.Embedding.from_pretrained(pretrained_embeddings,
-                                                      padding_idx=padding_idx)
-
-        drop_prob = 0. if num_layers > 1 else dropout_p
-        self.rnn = nn.RNN(embedding_dim, hidden_dim, num_layers=num_layers,
-                          bidirectional=bidirectional, nonlinearity=nonlinearity,
-                          dropout=drop_prob)
-
-        self.dropout = nn.Dropout(dropout_p)
-
-        self.fc = nn.Linear(hidden_dim * 2, output_dim)
-
-    def forward(self, batch):
-        # x_in: S x B
-        x_in = batch.text
-
-        # embedded: S x B x E
-        embedded = self.dropout(self.embedding(x_in))
-
-        # out: S x B x (H*num_directions)
-        # hidden: (L*num_directions) x B x H
-        # cell: (L*num_directions) x B x H
-        out, (hidden, cell) = self.rnn(embedded)
-
-        # if bidirectional concat the final forward (hidden[-2,:,:]) and
-        # backward (hidden[-1,:,:]) hidden layers, otherwise extract the
-        # final hidden state and apply dropout
-        # hidden = B x (H*num_directions)
-        if self.bidirectional:
-            hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
-        else:
-            hidden = hidden[-1, :, :]
-
-        hidden = self.dropout(hidden)
-        return self.fc(hidden)
-
-
 class RNN(nn.Module, AbstractModel):
     def __init__(self, embedding_dim, hidden_dim, output_dim,
                  num_layers, pretrained_embeddings, bidirectional,
@@ -116,38 +68,6 @@ class RNN(nn.Module, AbstractModel):
         # hidden: (L*num_directions) x B x H
         # cell: (L*num_directions) x B x H
         out_out, (hidden, cell) = self.rnn(embedded)
-
-        # if bidirectional concat the final forward (hidden[-2,:,:]) and
-        # backward (hidden[-1,:,:]) hidden layers, otherwise extract the
-        # final hidden state and apply dropout
-        # hidden = B x (H*num_directions)
-        if self.bidirectional:
-            hidden = torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1)
-        else:
-            hidden = hidden[-1, :, :]
-
-        hidden = self.dropout(hidden)
-        return self.fc(hidden)
-
-
-class PackedPlainRNN(PlainRNN):
-    def forward(self, batch):
-        # x_in: S x B
-        x_in, lengths = batch.text
-
-        # embedded: S x B x E
-        embedded = self.dropout(self.embedding(x_in))
-
-        # pack sequence
-        # output over padding tokens are zero tensors
-        # hidden: (L*num_directions) x B x H
-        # cell: (L*num_directions) x B x H
-        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, lengths)
-        packed_out, (hidden, cell) = self.rnn(packed_embedded)
-
-        # unpack sequence
-        # out: S x B x (H*num_directions)
-        out, out_lengths = nn.utils.rnn.pad_packed_sequence(packed_out)
 
         # if bidirectional concat the final forward (hidden[-2,:,:]) and
         # backward (hidden[-1,:,:]) hidden layers, otherwise extract the
