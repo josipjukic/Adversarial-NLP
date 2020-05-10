@@ -66,8 +66,8 @@ class RNN(nn.Module, AbstractModel):
 
         # out: S x B x (H*num_directions)
         # hidden: (L*num_directions) x B x H
-        # cell: (L*num_directions) x B x H
-        out_out, (hidden, cell) = self.rnn(embedded)
+        out, hidden = self.rnn(embedded)
+        if type(hidden) == tuple: hidden = hidden[0]
 
         # if bidirectional concat the final forward (hidden[-2,:,:]) and
         # backward (hidden[-1,:,:]) hidden layers, otherwise extract the
@@ -93,9 +93,9 @@ class PackedRNN(RNN):
         # pack sequence
         # output over padding tokens are zero tensors
         # hidden: (L*num_directions) x B x H
-        # cell: (L*num_directions) x B x H
         packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, lengths)
-        packed_out, (hidden, cell) = self.rnn(packed_embedded)
+        packed_out, hidden = self.rnn(packed_embedded)
+        if type(hidden) == tuple: hidden = hidden[0]
 
         # unpack sequence
         # out: S x B x (H*num_directions)
