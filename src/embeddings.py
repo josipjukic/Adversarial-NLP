@@ -34,3 +34,10 @@ def make_embedding_matrix(path, words):
             emb_i = np.random.randn(1, embedding_size)
             final_emb[i, :] = emb_i
     return final_emb
+
+
+def get_embeddings(TEXT, args):
+    pretrained_embeddings = TEXT.vocab.vectors
+    pretrained_embeddings[args.UNK_IDX] = torch.zeros(args.embedding_dim)
+    pretrained_embeddings[args.PAD_IDX] = torch.zeros(args.embedding_dim)
+    return pretrained_embeddings
