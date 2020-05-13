@@ -1,6 +1,7 @@
 import torch
 import time
 from data_utils import json_dump
+from metrics import accuracy
 
 
 def make_train_state(args):
@@ -78,18 +79,6 @@ def epoch_time(start_time, end_time):
     elapsed_mins = int(elapsed_time / 60)
     elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
     return elapsed_mins, elapsed_secs
-
-
-def accuracy(y_pred, y_gold):
-    if y_pred.shape[1] == 1:
-        # binary
-        preds = torch.round(torch.sigmoid(y_pred)).squeeze()
-    else:
-        # multi-class
-        preds = torch.argmax(y_pred, dim=1)
-    correct = (preds == y_gold).float()
-    acc = correct.sum() / len(correct)
-    return acc.item()
 
 
 def train(model, iterator, optimizer, criterion, train_state, tqdms=None):
