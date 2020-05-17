@@ -1,3 +1,4 @@
+from abc import ABC
 import numpy as np
 import string
 from collections import defaultdict
