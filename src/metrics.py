@@ -24,7 +24,7 @@ def is_pareto_efficient(costs):
     return is_efficient
 
 
-def init_tqdms():
+def init_tqdms(args):
     epoch_bar = tqdm(desc='Training routine', 
                     total=args.num_epochs,
                     position=0)
