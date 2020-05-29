@@ -24,18 +24,18 @@ def is_pareto_efficient(costs):
     return is_efficient
 
 
-def init_tqdms(args):
+def init_tqdms(args, iterator):
     epoch_bar = tqdm(desc='Training routine', 
                     total=args.num_epochs,
                     position=0)
 
     train_bar = tqdm(desc='Train set',
-                    total=len(train_iterator), 
+                    total=len(iterator['train']), 
                     position=1)
 
     val_bar = tqdm(desc='Valid set',
-                total=len(valid_iterator), 
-                position=1)
+                   total=len(iterator['valid']), 
+                   position=1)
 
     tqdms = dict(main=epoch_bar, train=train_bar, valid=val_bar)
     return tqdms
