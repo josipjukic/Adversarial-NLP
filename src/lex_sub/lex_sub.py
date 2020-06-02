@@ -56,15 +56,14 @@ class LexSub(LexSubBase):
                        **kwargs):
         
         cand_list = []
-        for i, word in enumerate(words):
+        for word in words:
             cands = self._get_candidates(
                         target=word,
-                        target_index=i,
                         n_candidates=n_candidates,
-                        sentence=sentence
+                        **kwargs
                      )
             if sbs:
-                cands = self.sort_by_substitutability(cands, word, i, words,
+                cands = self.sort_by_substitutability(cands, word, words,
                                                       n_substitutes)
             else:
                 cands = cands[:n_substitutes]
@@ -72,15 +71,15 @@ class LexSub(LexSubBase):
 
         return cand_list
 
-    def sort_by_substitutability(self, cands, target, target_index,
+    def sort_by_substitutability(self, cands, target,
                                  sentence, n_substitutes):
         C = [c for c in sentence if c not in self.spec_words and c != target]
-        scores = [self.get_substitutability(target, target_index, cand, C)
+        scores = [self.get_substitutability(target, cand, C)
                   for cand in cands]
         sorted_cands = sorted(zip(cands, scores), key = lambda x : x[1])
         return [sub for sub, _ in sorted_cands][:n_substitutes]
 
-    def get_substitutability(self, t, ti, s, C):
+    def get_substitutability(self, t, s, C):
         """
         t = target word
         ti = target index
