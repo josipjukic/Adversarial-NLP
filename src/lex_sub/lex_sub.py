@@ -5,6 +5,7 @@ from collections import defaultdict
 from nltk.corpus import wordnet
 from nltk.corpus import stopwords
 from nltk.corpus import lin_thesaurus
+from nltk import pos_tag
 
 
 def load_vocab_embeddings(path, vocab, emb_dim=300):
@@ -51,15 +52,16 @@ class LexSub(LexSubBase):
         b = a.T
         self.dist_mat = a+b+c_
 
-    def get_candidates(self, words, n_substitutes=10,
+   def get_candidates(self, words, n_substitutes=10,
                        n_candidates=10, sbs=False,
                        **kwargs):
         
         cand_list = []
-        for word in words:
+        for i, word in enumerate(words):
             cands = self._get_candidates(
                         target=word,
                         n_candidates=n_candidates,
+                        target_index=i,
                         **kwargs
                      )
             if sbs:
@@ -162,7 +164,7 @@ class LinModel(LexSub):
 
     @staticmethod
     def lin_synonyms(word, pos):
-        fileid = 'sim%s.lsp' % pos.upper()
+        fileid = 'sim%s.lsp' % ('N' if pos is None else pos.upper())
         thes_entry = lin_thesaurus.scored_synonyms(word, fileid=fileid)
         thes_entry = sorted(thes_entry, key = (lambda x : x[1]), reverse = True)
         return [syn for syn, score in thes_entry]
