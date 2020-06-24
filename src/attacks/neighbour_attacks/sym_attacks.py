@@ -4,7 +4,10 @@ from .utils import (softmax, prob_normalize)
 
 
 
-class Attack():
+class RGA():
+    """
+        Reinforced Genetic Attack
+    """
     def __init__(self, model, LS,
                  pop_size=20, max_iters=5,
                  top_n=10, packed=True, filter_spec=False,
@@ -88,7 +91,6 @@ class Attack():
         )
 
     def crossover(self, x1, x2):
-        # add different crossover
         x_new = x1.copy()
         for i in range(len(x1)):
             if np.random.uniform() < 0.5:
@@ -128,15 +130,13 @@ class Attack():
             top_attack = np.argmax(pop_scores)
             select_probs = softmax(pop_scores)
 
-            print('\t\t', i, ' -- ', np.max(pop_scores))
+            print(f'Iter = {i} -- Best score = {np.max(pop_scores}})
 
             if self.targeted:
                 if np.argmax(pop_preds[top_attack, :]) == target:
-                    print('Success!')
                     return pop[top_attack]
             else:
                 if np.argmax(pop_preds[top_attack, :]) != target:
-                    print('Success!')
                     return pop[top_attack]
             
             elite = [pop[top_attack]]

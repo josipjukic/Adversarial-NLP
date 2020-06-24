@@ -10,38 +10,7 @@ import numpy as np
 import sys
 
 
-def grad(model, inputs, pred, classes):
-    losses1 = torch.zeros(inputs.size()[0], inputs.size()[1])
-    dloss = torch.zeros(inputs.size()[0], inputs.size()[1])
-    if isinstance(model, torch.nn.DataParallel):
-        model = model.module
-    model.train()
-    embd, output = model(inputs, returnembd=True)
-    # embd.retain_grad()
-    loss = F.nll_loss(output, pred)
-
-    loss.backward()
-    score = (inputs <= 2).float()
-    score = -score
-    score = embd.grad.norm(2, dim=2) + score * 1e9
-    return score
-
-
-def grad_unconstrained(model, inputs, pred, classes):
-    losses1 = torch.zeros(inputs.size()[0], inputs.size()[1])
-    dloss = torch.zeros(inputs.size()[0], inputs.size()[1])
-    if isinstance(model, torch.nn.DataParallel):
-        model = model.module
-    model.train()
-    embd, output = model(inputs, returnembd=True)
-    loss = F.nll_loss(output, pred)
-
-    loss.backward()
-    score = embd.grad.norm(2, dim=2)
-    return score
-
-
-def word_target(model, batch, y_preds, num_classes, device):
+def word_drop(model, batch, y_preds, num_classes, device):
     inputs = batch[0]
     losses = torch.zeros(inputs.shape)
     target = None
